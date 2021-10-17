@@ -1,0 +1,653 @@
+# Makefile.in generated automatically by automake 1.4-p6 from Makefile.am
+
+# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
+# This Makefile.in is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
+
+
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+
+pkgdatadir = $(datadir)/@PACKAGE@
+pkglibdir = $(libdir)/@PACKAGE@
+
+top_builddir = .
+
+ACLOCAL = @ACLOCAL@
+AUTOCONF = @AUTOCONF@
+AUTOMAKE = @AUTOMAKE@
+AUTOHEADER = @AUTOHEADER@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@ $(AM_INSTALL_PROGRAM_FLAGS)
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+transform = @program_transform_name@
+
+NORMAL_INSTALL = :
+PRE_INSTALL = :
+POST_INSTALL = :
+NORMAL_UNINSTALL = :
+PRE_UNINSTALL = :
+POST_UNINSTALL = :
+build_alias = @build_alias@
+build_triplet = @build@
+host_alias = @host_alias@
+host_triplet = @host@
+target_alias = @target_alias@
+target_triplet = @target@
+AS = @AS@
+CC = @CC@
+DLLTOOL = @DLLTOOL@
+DNETCOMPAT = @DNETCOMPAT@
+DNETINC = @DNETINC@
+DNETLIB = @DNETLIB@
+EDITINC = @EDITINC@
+EDITLIB = @EDITLIB@
+EVENTINC = @EVENTINC@
+EVENTLIB = @EVENTLIB@
+LEX = @LEX@
+LIBCURSES = @LIBCURSES@
+LIBDL = @LIBDL@
+LIBTOOL = @LIBTOOL@
+LN_S = @LN_S@
+MAKEINFO = @MAKEINFO@
+OBJDUMP = @OBJDUMP@
+PACKAGE = @PACKAGE@
+PCAPINC = @PCAPINC@
+PCAPLIB = @PCAPLIB@
+PLUGINLIB = @PLUGINLIB@
+PLUGINS = @PLUGINS@
+PLUGINSDECLARE = @PLUGINSDECLARE@
+PYEXTEND = @PYEXTEND@
+PYTHONINC = @PYTHONINC@
+PYTHONLIB = @PYTHONLIB@
+RANLIB = @RANLIB@
+VERSION = @VERSION@
+YACC = @YACC@
+_PATH_PYTHON = @_PATH_PYTHON@
+dnetconfig = @dnetconfig@
+
+AUTOMAKE_OPTIONS = foreign no-dependencies
+
+########################################################################
+########################################################################
+
+#pkglib_LTLIBRARIES = libhoneyd.la 
+#libhoneyd_la_SOURCES = honeyd_overload.c atomicio.c fdpass.c fdpass.h
+#libhoneyd_la_LDFLAGS = -module -export-dynamic -avoid-version
+
+LIBHONEYDFILES = honeyd_overload.lo atomicio.lo fdpass.lo
+
+libhoneyddir = $(libdir)/honeyd
+libhoneyd_DATA = libhoneyd.so
+
+# Configuration files for Honeyd
+honeyddatadir = $(datadir)/honeyd
+honeydlibdir = $(libdir)/honeyd
+honeydincludedir = $(includedir)/honeyd
+honeyddata_DATA = README nmap.assoc xprobe2.conf nmap.prints config.sample 		config.ethernet pf.os
+
+
+honeydplugins = @PLUGINS@
+honeydpluginsdeclare = @PLUGINSDECLARE@
+
+########################################################################
+########################################################################
+
+bin_PROGRAMS = honeyd honeydctl
+
+# Install the header files in a separate subdirectory. Note that
+# honeydincludedir is the directory reported to the user, who has to
+# use that directory as an -I include directive with #include <honeyd/foo.h>.
+# pkgincludedir includes the additional honeyd directory since that's
+# where the headers are actually installed.
+pkgincludedir = $(honeydincludedir)
+pkginclude_HEADERS = hooks.h plugins.h plugins_config.h debug.h
+
+honeyd_SOURCES = honeyd.c command.c parse.y lex.l config.c personality.c 	util.c ipfrag.c router.c tcp.c udp.c xprobe_assoc.c log.c 	fdpass.c atomicio.c subsystem.c hooks.c plugins.c 	plugins_config.c pool.c interface.c arp.c gre.c 	honeyd.h personality.h ipfrag.h	router.h tcp.h udp.h parse.h 	xprobe_assoc.h subsystem.h fdpass.h hooks.h plugins.h 	plugins_config.h template.h pool.h interface.h arp.h gre.h 	log.h pfctl_osfp.c pf_osfp.c pfvar.h condition.c condition.h 	osfp.c osfp.h ui.c ui.h buffer.h buffer.c ethernet.c ethernet.h 	parser.h
+
+
+honeyd_DEPENDENCIES = @PYEXTEND@ @LIBOBJS@
+honeyd_LDADD = @PYEXTEND@ @LIBOBJS@ @PYTHONLIB@ @EVENTLIB@ @PCAPLIB@ 	@DNETLIB@ @PLUGINLIB@ -lm
+
+
+# Allow plugins to use honeyd's functions:
+honeyd_LDFLAGS = -export-dynamic 
+
+honeydctl_SOURCES = honeydctl.c
+honeydctl_LDADD = @LIBOBJS@ @EDITLIB@ @LIBCURSES@
+honeydctl_INCLUDES = @EDITINC@
+honeydctl_CFLAGS = -O2 -Wall
+
+CFLAGS = -O2 -Wall -g 	-DPATH_HONEYDINCLUDE="\"$(honeydincludedir)\"" 	-DPATH_HONEYDDATA="\"$(honeyddatadir)\"" 	-DPATH_HONEYDLIB="\"$(honeydlibdir)\"" 	-DHONEYD_PLUGINS_DECLARE="$(honeydpluginsdeclare)" 	-DHONEYD_PLUGINS="$(honeydplugins)"
+
+
+INCLUDES = -I$(top_srcdir)/@DNETCOMPAT@ -I$(top_srcdir)/compat 	@PYTHONINC@ @EVENTINC@ @PCAPINC@ @DNETINC@
+
+
+########################################################################
+########################################################################
+
+man_MANS = honeyd.8 honeydctl.1
+
+EXTRA_DIST = $(man_MANS) acconfig.h $(honeyddata_DATA) 	LICENSE 	compat/sys/tree.h compat/sys/queue.h compat/err.h 	compat/libdnet/dnet.h compat/getopt.h 	scripts/web.sh scripts/router-telnet.pl scripts/test.sh 	scripts/mydoom.pl scripts/README.mydoom 	scripts/smtp.pl scripts/proxy.pl 	scripts/snmp/README scripts/snmp/buildSNMPConfig.pl 	scripts/snmp/fake-snmp.pl scripts/snmp/default.snmp 	scripts/snmp/windows2000.snmp.tpl scripts/snmp/linux-2.4.snmp.tpl 	ltconfig honeyd_overload.c pyextend.c pyextend.h
+
+
+CLEANFILES = *.so
+DISTCLEANFILES = *~
+
+LEX_OUTPUT_ROOT = lex.hyd
+LFLAGS = -Phyd
+YFLAGS = -d
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+CONFIG_HEADER = config.h
+CONFIG_CLEAN_FILES = 
+PROGRAMS =  $(bin_PROGRAMS)
+
+
+DEFS = @DEFS@ -I. -I$(srcdir) -I.
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+honeyd_OBJECTS =  honeyd.o command.o parse.o lex.o config.o \
+personality.o util.o ipfrag.o router.o tcp.o udp.o xprobe_assoc.o log.o \
+fdpass.o atomicio.o subsystem.o hooks.o plugins.o plugins_config.o \
+pool.o interface.o arp.o gre.o pfctl_osfp.o pf_osfp.o condition.o \
+osfp.o ui.o buffer.o ethernet.o
+honeydctl_OBJECTS =  honeydctl.o
+honeydctl_DEPENDENCIES =  @LIBOBJS@
+honeydctl_LDFLAGS = 
+LEXLIB = @LEXLIB@
+COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
+man1dir = $(mandir)/man1
+man8dir = $(mandir)/man8
+MANS = $(man_MANS)
+
+NROFF = nroff
+DATA =  $(honeyddata_DATA) $(libhoneyd_DATA)
+
+HEADERS =  $(pkginclude_HEADERS)
+
+DIST_COMMON =  README ./stamp-h.in Makefile.am Makefile.in TODO \
+acconfig.h aclocal.m4 config.guess config.h.in config.sub configure \
+configure.in daemon.c err.c getopt_long.c install-sh lex.c ltconfig \
+ltmain.sh missing mkinstalldirs parse.c strlcat.c strlcpy.c strsep.c
+
+
+DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
+
+TAR = tar
+GZIP_ENV = --best
+SOURCES = $(honeyd_SOURCES) $(honeydctl_SOURCES)
+OBJECTS = $(honeyd_OBJECTS) $(honeydctl_OBJECTS)
+
+all: all-redirect
+.SUFFIXES:
+.SUFFIXES: .S .c .l .lo .o .s .y
+$(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
+	cd $(top_srcdir) && $(AUTOMAKE) --foreign Makefile
+
+Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
+	cd $(top_builddir) \
+	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
+
+$(ACLOCAL_M4):  configure.in 
+	cd $(srcdir) && $(ACLOCAL)
+
+config.status: $(srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
+	$(SHELL) ./config.status --recheck
+$(srcdir)/configure: $(srcdir)/configure.in $(ACLOCAL_M4) $(CONFIGURE_DEPENDENCIES)
+	cd $(srcdir) && $(AUTOCONF)
+
+config.h: stamp-h
+	@if test ! -f $@; then \
+		rm -f stamp-h; \
+		$(MAKE) stamp-h; \
+	else :; fi
+stamp-h: $(srcdir)/config.h.in $(top_builddir)/config.status
+	cd $(top_builddir) \
+	  && CONFIG_FILES= CONFIG_HEADERS=config.h \
+	     $(SHELL) ./config.status
+	@echo timestamp > stamp-h 2> /dev/null
+$(srcdir)/config.h.in: $(srcdir)/stamp-h.in
+	@if test ! -f $@; then \
+		rm -f $(srcdir)/stamp-h.in; \
+		$(MAKE) $(srcdir)/stamp-h.in; \
+	else :; fi
+$(srcdir)/stamp-h.in: $(top_srcdir)/configure.in $(ACLOCAL_M4) acconfig.h
+	cd $(top_srcdir) && $(AUTOHEADER)
+	@echo timestamp > $(srcdir)/stamp-h.in 2> /dev/null
+
+mostlyclean-hdr:
+
+clean-hdr:
+
+distclean-hdr:
+	-rm -f config.h
+
+maintainer-clean-hdr:
+
+mostlyclean-binPROGRAMS:
+
+clean-binPROGRAMS:
+	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+
+distclean-binPROGRAMS:
+
+maintainer-clean-binPROGRAMS:
+
+install-binPROGRAMS: $(bin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	@list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    echo " $(LIBTOOL)  --mode=install $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`"; \
+	    $(LIBTOOL)  --mode=install $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
+	  else :; fi; \
+	done
+
+uninstall-binPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
+	done
+
+.c.o:
+	$(COMPILE) -c $<
+
+.s.o:
+	$(COMPILE) -c $<
+
+.S.o:
+	$(COMPILE) -c $<
+
+mostlyclean-compile:
+	-rm -f *.o core *.core
+
+clean-compile:
+
+distclean-compile:
+	-rm -f *.tab.c
+
+maintainer-clean-compile:
+
+.c.lo:
+	$(LIBTOOL) --mode=compile $(COMPILE) -c $<
+
+.s.lo:
+	$(LIBTOOL) --mode=compile $(COMPILE) -c $<
+
+.S.lo:
+	$(LIBTOOL) --mode=compile $(COMPILE) -c $<
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+
+distclean-libtool:
+
+maintainer-clean-libtool:
+
+honeyd: $(honeyd_OBJECTS) $(honeyd_DEPENDENCIES)
+	@rm -f honeyd
+	$(LINK) $(honeyd_LDFLAGS) $(honeyd_OBJECTS) $(honeyd_LDADD) $(LIBS)
+
+honeydctl: $(honeydctl_OBJECTS) $(honeydctl_DEPENDENCIES)
+	@rm -f honeydctl
+	$(LINK) $(honeydctl_LDFLAGS) $(honeydctl_OBJECTS) $(honeydctl_LDADD) $(LIBS)
+.l.c:
+	$(LEX) $(AM_LFLAGS) $(LFLAGS) $< && mv $(LEX_OUTPUT_ROOT).c $@
+.y.c:
+	$(YACC) $(AM_YFLAGS) $(YFLAGS) $< && mv y.tab.c $*.c
+	if test -f y.tab.h; then \
+	if cmp -s y.tab.h $*.h; then rm -f y.tab.h; else mv y.tab.h $*.h; fi; \
+	else :; fi
+parse.h: parse.c
+
+
+install-man1:
+	$(mkinstalldirs) $(DESTDIR)$(man1dir)
+	@list='$(man1_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.1*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  if test -f $(srcdir)/$$i; then file=$(srcdir)/$$i; \
+	  else file=$$i; fi; \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " $(INSTALL_DATA) $$file $(DESTDIR)$(man1dir)/$$inst"; \
+	  $(INSTALL_DATA) $$file $(DESTDIR)$(man1dir)/$$inst; \
+	done
+
+uninstall-man1:
+	@list='$(man1_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.1*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " rm -f $(DESTDIR)$(man1dir)/$$inst"; \
+	  rm -f $(DESTDIR)$(man1dir)/$$inst; \
+	done
+
+install-man8:
+	$(mkinstalldirs) $(DESTDIR)$(man8dir)
+	@list='$(man8_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.8*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  if test -f $(srcdir)/$$i; then file=$(srcdir)/$$i; \
+	  else file=$$i; fi; \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " $(INSTALL_DATA) $$file $(DESTDIR)$(man8dir)/$$inst"; \
+	  $(INSTALL_DATA) $$file $(DESTDIR)$(man8dir)/$$inst; \
+	done
+
+uninstall-man8:
+	@list='$(man8_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.8*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " rm -f $(DESTDIR)$(man8dir)/$$inst"; \
+	  rm -f $(DESTDIR)$(man8dir)/$$inst; \
+	done
+install-man: $(MANS)
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-man1 install-man8
+uninstall-man:
+	@$(NORMAL_UNINSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-man1 uninstall-man8
+
+install-honeyddataDATA: $(honeyddata_DATA)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(honeyddatadir)
+	@list='$(honeyddata_DATA)'; for p in $$list; do \
+	  if test -f $(srcdir)/$$p; then \
+	    echo " $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(honeyddatadir)/$$p"; \
+	    $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(honeyddatadir)/$$p; \
+	  else if test -f $$p; then \
+	    echo " $(INSTALL_DATA) $$p $(DESTDIR)$(honeyddatadir)/$$p"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(honeyddatadir)/$$p; \
+	  fi; fi; \
+	done
+
+uninstall-honeyddataDATA:
+	@$(NORMAL_UNINSTALL)
+	list='$(honeyddata_DATA)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(honeyddatadir)/$$p; \
+	done
+
+install-libhoneydDATA: $(libhoneyd_DATA)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(libhoneyddir)
+	@list='$(libhoneyd_DATA)'; for p in $$list; do \
+	  if test -f $(srcdir)/$$p; then \
+	    echo " $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(libhoneyddir)/$$p"; \
+	    $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(libhoneyddir)/$$p; \
+	  else if test -f $$p; then \
+	    echo " $(INSTALL_DATA) $$p $(DESTDIR)$(libhoneyddir)/$$p"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(libhoneyddir)/$$p; \
+	  fi; fi; \
+	done
+
+uninstall-libhoneydDATA:
+	@$(NORMAL_UNINSTALL)
+	list='$(libhoneyd_DATA)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(libhoneyddir)/$$p; \
+	done
+
+install-pkgincludeHEADERS: $(pkginclude_HEADERS)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(pkgincludedir)
+	@list='$(pkginclude_HEADERS)'; for p in $$list; do \
+	  if test -f "$$p"; then d= ; else d="$(srcdir)/"; fi; \
+	  echo " $(INSTALL_DATA) $$d$$p $(DESTDIR)$(pkgincludedir)/$$p"; \
+	  $(INSTALL_DATA) $$d$$p $(DESTDIR)$(pkgincludedir)/$$p; \
+	done
+
+uninstall-pkgincludeHEADERS:
+	@$(NORMAL_UNINSTALL)
+	list='$(pkginclude_HEADERS)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(pkgincludedir)/$$p; \
+	done
+
+tags: TAGS
+
+ID: $(HEADERS) $(SOURCES) $(LISP)
+	list='$(SOURCES) $(HEADERS)'; \
+	unique=`for i in $$list; do echo $$i; done | \
+	  awk '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	here=`pwd` && cd $(srcdir) \
+	  && mkid -f$$here/ID $$unique $(LISP)
+
+TAGS:  $(HEADERS) $(SOURCES) config.h.in $(TAGS_DEPENDENCIES) $(LISP)
+	tags=; \
+	here=`pwd`; \
+	list='$(SOURCES) $(HEADERS)'; \
+	unique=`for i in $$list; do echo $$i; done | \
+	  awk '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	test -z "$(ETAGS_ARGS)config.h.in$$unique$(LISP)$$tags" \
+	  || (cd $(srcdir) && etags $(ETAGS_ARGS) $$tags config.h.in $$unique $(LISP) -o $$here/TAGS)
+
+mostlyclean-tags:
+
+clean-tags:
+
+distclean-tags:
+	-rm -f TAGS ID
+
+maintainer-clean-tags:
+
+distdir = $(PACKAGE)-$(VERSION)
+top_distdir = $(distdir)
+
+# This target untars the dist file and tries a VPATH configuration.  Then
+# it guarantees that the distribution is self-contained by making another
+# tarfile.
+distcheck: dist
+	-rm -rf $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) zxf $(distdir).tar.gz
+	mkdir $(distdir)/=build
+	mkdir $(distdir)/=inst
+	dc_install_base=`cd $(distdir)/=inst && pwd`; \
+	cd $(distdir)/=build \
+	  && ../configure --srcdir=.. --prefix=$$dc_install_base \
+	  && $(MAKE) $(AM_MAKEFLAGS) \
+	  && $(MAKE) $(AM_MAKEFLAGS) dvi \
+	  && $(MAKE) $(AM_MAKEFLAGS) check \
+	  && $(MAKE) $(AM_MAKEFLAGS) install \
+	  && $(MAKE) $(AM_MAKEFLAGS) installcheck \
+	  && $(MAKE) $(AM_MAKEFLAGS) dist
+	-rm -rf $(distdir)
+	@banner="$(distdir).tar.gz is ready for distribution"; \
+	dashes=`echo "$$banner" | sed s/./=/g`; \
+	echo "$$dashes"; \
+	echo "$$banner"; \
+	echo "$$dashes"
+dist: distdir
+	-chmod -R a+r $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) chozf $(distdir).tar.gz $(distdir)
+	-rm -rf $(distdir)
+dist-all: distdir
+	-chmod -R a+r $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) chozf $(distdir).tar.gz $(distdir)
+	-rm -rf $(distdir)
+distdir: $(DISTFILES)
+	-rm -rf $(distdir)
+	mkdir $(distdir)
+	-chmod 777 $(distdir)
+	$(mkinstalldirs) $(distdir)/compat $(distdir)/compat/libdnet \
+	   $(distdir)/compat/sys $(distdir)/scripts \
+	   $(distdir)/scripts/snmp
+	@for file in $(DISTFILES); do \
+	  d=$(srcdir); \
+	  if test -d $$d/$$file; then \
+	    cp -pr $$d/$$file $(distdir)/$$file; \
+	  else \
+	    test -f $(distdir)/$$file \
+	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \
+	    || cp -p $$d/$$file $(distdir)/$$file || :; \
+	  fi; \
+	done
+	$(MAKE) $(AM_MAKEFLAGS) top_distdir="$(top_distdir)" distdir="$(distdir)" dist-hook
+info-am:
+info: info-am
+dvi-am:
+dvi: dvi-am
+check-am: all-am
+check: check-am
+installcheck-am:
+installcheck: installcheck-am
+all-recursive-am: config.h
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
+
+install-exec-am: install-binPROGRAMS
+install-exec: install-exec-am
+
+install-data-am: install-man install-honeyddataDATA \
+		install-libhoneydDATA install-pkgincludeHEADERS
+install-data: install-data-am
+
+install-am: all-am
+	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
+install: install-am
+uninstall-am: uninstall-binPROGRAMS uninstall-man \
+		uninstall-honeyddataDATA uninstall-libhoneydDATA \
+		uninstall-pkgincludeHEADERS
+uninstall: uninstall-am
+all-am: Makefile $(PROGRAMS) $(MANS) $(DATA) $(HEADERS) config.h
+all-redirect: all-am
+install-strip:
+	$(MAKE) $(AM_MAKEFLAGS) AM_INSTALL_PROGRAM_FLAGS=-s install
+installdirs:
+	$(mkinstalldirs)  $(DESTDIR)$(bindir) $(DESTDIR)$(mandir)/man1 \
+		$(DESTDIR)$(mandir)/man8 $(DESTDIR)$(honeyddatadir) \
+		$(DESTDIR)$(libhoneyddir) $(DESTDIR)$(pkgincludedir)
+
+
+mostlyclean-generic:
+
+clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
+
+distclean-generic:
+	-rm -f Makefile $(CONFIG_CLEAN_FILES)
+	-rm -f config.cache config.log stamp-h stamp-h[0-9]*
+	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
+
+maintainer-clean-generic:
+	-test -z "lexcparsehparsec" || rm -f lexc parseh parsec
+mostlyclean-am:  mostlyclean-hdr mostlyclean-binPROGRAMS \
+		mostlyclean-compile mostlyclean-libtool \
+		mostlyclean-tags mostlyclean-generic
+
+mostlyclean: mostlyclean-am
+
+clean-am:  clean-hdr clean-binPROGRAMS clean-compile clean-libtool \
+		clean-tags clean-generic mostlyclean-am
+
+clean: clean-am
+
+distclean-am:  distclean-hdr distclean-binPROGRAMS distclean-compile \
+		distclean-libtool distclean-tags distclean-generic \
+		clean-am
+	-rm -f libtool
+
+distclean: distclean-am
+	-rm -f config.status
+
+maintainer-clean-am:  maintainer-clean-hdr maintainer-clean-binPROGRAMS \
+		maintainer-clean-compile maintainer-clean-libtool \
+		maintainer-clean-tags maintainer-clean-generic \
+		distclean-am
+	@echo "This command is intended for maintainers to use;"
+	@echo "it deletes files that may require special tools to rebuild."
+
+maintainer-clean: maintainer-clean-am
+	-rm -f config.status
+
+.PHONY: mostlyclean-hdr distclean-hdr clean-hdr maintainer-clean-hdr \
+mostlyclean-binPROGRAMS distclean-binPROGRAMS clean-binPROGRAMS \
+maintainer-clean-binPROGRAMS uninstall-binPROGRAMS install-binPROGRAMS \
+mostlyclean-compile distclean-compile clean-compile \
+maintainer-clean-compile mostlyclean-libtool distclean-libtool \
+clean-libtool maintainer-clean-libtool install-man1 uninstall-man1 \
+install-man8 uninstall-man8 install-man uninstall-man \
+uninstall-honeyddataDATA install-honeyddataDATA uninstall-libhoneydDATA \
+install-libhoneydDATA uninstall-pkgincludeHEADERS \
+install-pkgincludeHEADERS tags mostlyclean-tags distclean-tags \
+clean-tags maintainer-clean-tags distdir info-am info dvi-am dvi check \
+check-am installcheck-am installcheck all-recursive-am install-exec-am \
+install-exec install-data-am install-data install-am install \
+uninstall-am uninstall all-redirect all-am all installdirs \
+mostlyclean-generic distclean-generic clean-generic \
+maintainer-clean-generic clean mostlyclean distclean maintainer-clean
+
+libhoneyd.so: $(LIBHONEYDFILES)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) -o libtmp$@.la \
+		-rpath $(libdir)/honeyd $(LIBHONEYDFILES) $(LIBS) $(LDFLAGS) \
+		-module -avoid-version -nostdlib @LIBDL@
+	rm -f libtmp$@.la tmp$@.so* $@
+	cp .libs/libtmp$@.so $@ || cp .libs/libtmp$@ $@
+	rm -f .libs/libtmp$@.*
+
+dist-hook:
+	./distribute.py $(distdir)/
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

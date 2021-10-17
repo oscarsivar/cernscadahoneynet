@@ -1,0 +1,15 @@
+- Prevent outgoing messages / firewalls.
+ - ICMP time exceeded in transit
+- Packet throttling:
+ - packets per second.
+
+- log rotation
+
+Management Console:
+===================
+
+Provide interactive access to configuration.
+
+- halt (halt a honeypot)
+- reboot (restart a honeypot or start a halted honeypot)
+- delete template or port

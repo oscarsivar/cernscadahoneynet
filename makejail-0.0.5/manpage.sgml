@@ -1,0 +1,862 @@
+<!doctype refentry PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+
+<!-- Process this file with docbook-to-man to generate an nroff manual
+     page: `docbook-to-man manpage.sgml > manpage.1'.  You may view
+     the manual page with: `docbook-to-man manpage.sgml | nroff -man |
+     less'.  A typical entry in a Makefile or Makefile.am is:
+
+manpage.1: manpage.sgml
+	docbook-to-man $< > $@
+  -->
+
+  <!-- Fill in your name for FIRSTNAME and SURNAME. -->
+  <!ENTITY dhfirstname "<firstname>Tesio</firstname>">
+  <!ENTITY dhsurname   "<surname>Alain</surname>">
+  <!-- Please adjust the date whenever revising the manpage. -->
+  <!ENTITY dhdate      "<date>November 02, 2002</date>">
+  <!-- SECTION should be 1-8, maybe w/ subsection other parameters are
+       allowed: see man(7), man(1). -->
+  <!ENTITY dhsection   "<manvolnum>8</manvolnum>">
+  <!ENTITY dhemail     "<email>alain@onesite.org</email>">
+  <!ENTITY dhusername  "Alain Tesio">
+  <!ENTITY dhucpackage "<refentrytitle>MAKEJAIL</refentrytitle>">
+  <!ENTITY dhpackage   "makejail">
+
+  <!ENTITY debian      "<productname>Debian GNU/Linux</productname>">
+  <!ENTITY gnu         "<acronym>GNU</acronym>">
+]>
+
+<refentry>
+  <refentryinfo>
+    <address>
+      &dhemail;
+    </address>
+    <author>
+      &dhfirstname;
+      &dhsurname;
+    </author>
+    <copyright>
+      <year>2002</year>
+      <holder>&dhusername;</holder>
+    </copyright>
+    &dhdate;
+  </refentryinfo>
+  <refmeta>
+	  &dhucpackage;
+	  &dhsection;
+  </refmeta>
+  <refnamediv>
+    <refname>&dhpackage;</refname>
+    <refpurpose>Helps creating and maintaining a chroot jail</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>&dhpackage;</command>
+      <arg><replaceable>configuration_file</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+
+
+  <refsect1>
+    <title>Overview</title>
+
+	<para>The objective of makejail is to help an administrator creating and updating a chroot jail with short configuration files.</para>
+
+	<para>Makejails attempts to guess and install into the jail all files required by the daemon.</para>
+
+	<para>You have to understand how it works to configure it efficiently.</para>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Detailed mechanism</title>
+
+	<para>The list of these files is built from several sources:</para>
+
+	<para>- the main method is to trace what files the daemon attempts to access, add them into the jail and restart again until no further file is found.</para>
+
+	<para>- a list of files manually given in the configuration file.</para>
+
+	<para>- the files which belongs to a package and eventually the packages it requires.</para>
+
+	<para>When a file is added into the jail:</para>
+
+	<para>- the shared librairies it needs (given by ldd) are added too.</para>
+
+	<para>- upper directories are created if needed.</para>
+
+	<para>- if the file is a symbolic link, the target is added too.</para>
+
+	<para>- all the checks to determine what files a file needs are recursive.</para>
+
+	<para>- all files are copied maintaining the originals' ownerships and permissions.</para>
+
+	<para>Some files are handled with a special method:</para>
+
+	<para>- when the file is below /proc, the procfs filesystem is mounted inside the jail.</para>
+
+	<para>- when the file is a socket, it's not copied.</para>
+
+	<para>- when the file is the shared library cache, it's not copied, ldconfig is run at the end.</para>
+
+	<para>The steps of makejail are:</para>
+
+	<para>- eventually remove the files in the jail first.</para>
+
+	<para>- if you specified some packages, add all the files which belongs to them.</para>
+
+	<para>- if you specified some paths to include, add the files matching these patterns.</para>
+
+	<para>- start the daemon inside the jail, and trace it with strace, add the files it attempts to open which exist outside the jail, kill it and start again until no more file is found.</para>
+
+	<para>- start the daemon inside the jail, and trace it while running some test processes outside the jail, see with strace what files the daemon attempts to open.</para>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration files</title>
+
+	<para>The file must be written in a correct python syntax. The good news is that the syntax is simple, and you can eventually write some python code to define the syntax.</para>
+
+	<para>Some default directives may be defined in /etc/makejail, the configuration file given on the command line has predecence.</para>
+
+	<para>All paths you use in the configuration file must be absolute.</para>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Basics</title>
+ 
+		  <para>Defaults won't work, you must define specific values for these directives.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>chroot</option></term>
+        <listitem>
+
+		  <para>The path to the chroot. The directory must exist and have correct permissions and ownerships.</para>
+
+		  <para>Format: "/path/to/jail"</para>
+
+		  <para>Default: None</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>testCommandsInsideJail</option></term>
+        <listitem>
+
+		  <para>The commands used to start the daemon, a good starting point may be the command used in the startup script in /etc/init.d</para>
+
+		  <para>Format: ["command1","command2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>processNames</option></term>
+        <listitem>
+
+		  <para>The name of the runnning processes after the daemon has been started.</para>
+
+		  <para>Format: ["process1","process2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Tests</title>
+ 
+		  <para>After the daemon itself has been chrooted successfully, some commands can be executed from outside the jail to test the daemon.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>testCommandsOutsideJail</option></term>
+        <listitem>
+
+		  <para>The test commands which should be executed.</para>
+
+		  <para>Format: ["command1","command2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>promptForInteractiveTests</option></term>
+        <listitem>
+
+		  <para>Whether makejail should pause so you can stress the daemon yourself.</para>
+
+		  <para>Use only if makejail is run interactively, and don't redirect its outputs.</para>
+
+		  <para>Format: 1 (prompt) or 0 (don't prompt)</para>
+
+		  <para>Default: 0</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>promptForSomeMoreTests=0</option></term>
+        <listitem>
+
+		  <para>Whether makejail should loop while running tests until you tell it it's over.</para>
+
+		  <para>Use only if makejail is run interactively, and don't redirect its outputs.</para>
+
+		  <para>Format: 1 (prompt) or 0 (don't prompt)</para>
+
+		  <para>Default: 0</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>maxExecutions</option></term>
+        <listitem>
+
+		  <para>Maximum number of times a command is executed before aborting.</para>
+
+		  <para>Format: integer</para>
+
+		  <para>Default: 100</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Copying files</title>
+ 
+
+    <variablelist>
+      <varlistentry>
+        <term><option>doNotCopy</option></term>
+        <listitem>
+
+		  <para>Do not copy the files matching these patterns according to the rules used by the Unix shell.</para>
+
+		  <para>No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched.</para>
+
+		  <para>Format: ["path1","path2"]</para>
+
+		  <para>Default: ["/usr/share/doc","/usr/share/info","/usr/share/man","/etc/fstab","/etc/mtab"]</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>forceCopy</option></term>
+        <listitem>
+
+		  <para>When initializing the jail, copy the files matching these patterns according to the rules used by the Unix shell.</para>
+
+		  <para>No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched.</para>
+
+		  <para>Format: ["path1","path2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>cleanJailFirst</option></term>
+        <listitem>
+
+		  <para>Whether makejail should remove files in jail first.</para>
+
+		  <para>Format: 0 to do nothing or 1 to remove files from the jail.</para>
+
+		  <para>Default: 1</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>preserve</option></term>
+        <listitem>
+
+		  <para>Useful only if cleanJailFirst=1, makejail won't remove files or directories if their path begins with one of the strings in this list.</para>
+
+		  <para>When updating a jail, you should for example put the locations of log files here.</para>
+
+		  <para>Format: ["path1","path2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>maxRemove</option></term>
+        <listitem>
+
+		  <para>Useful only if cleanJailFirst=1, makejail aborts if it's about to remove more than this number of files from the jail.</para>
+
+		  <para>This may prevent makejail from erasing unwanted files if you wrote chroot="/usr" or if you have mounted a partition in the jail.</para>
+
+		  <para>Format: integer</para>
+
+		  <para>Default: 500</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>users</option></term>
+        <listitem>
+
+		  <para>Makejail will filter the files listed in the directive userFiles and copy only lines matching these users, which means lines starting with "user:"</para>
+
+		  <para>You can use ["*"] to disable filtering and copy the whole file.</para>
+
+		  <para>Format: ["user1","user2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>groups</option></term>
+        <listitem>
+
+		  <para>Makejail will filter the files listed in the directive groupFiles and copy only lines matching these groups, which means lines starting with "group:"</para>
+
+		  <para>You can use ["*"] to disable filtering and copy the whole file.</para>
+
+		  <para>Format: ["group1","group2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Timing</title>
+ 
+		  <para>These times are in seconds, the values are the duration of sleeps at various stages of makejail.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>sleepAfterStartCommand</option></term>
+        <listitem>
+
+		  <para>Duration of sleep after starting the daemon, after this delay makejail considers it's in a correctly running state.</para>
+
+		  <para>Format: floating number</para>
+
+		  <para>Default: 2</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>sleepAfterTest</option></term>
+        <listitem>
+
+		  <para>Duration of sleep after a test command has been run, after this delay makejail considers the daemon has finished its tasks related to this command.</para>
+
+		  <para>Format: floating number</para>
+
+		  <para>Default: 2</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>sleepAfterKillall</option></term>
+        <listitem>
+
+		  <para>Duration of sleep after killing the daemon processes.</para>
+
+		  <para>Format: floating number</para>
+
+		  <para>Default: 1</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>sleepAfterStraceAttachPid</option></term>
+        <listitem>
+
+		  <para>Duration of sleep after attaching strace to a running process id.</para>
+
+		  <para>Format: floating number</para>
+
+		  <para>Default: 0.2</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Debian specific</title>
+ 
+		  <para>I initially thought with starting with the package description, but this method usually installs a bunch of files you won't need.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>packages</option></term>
+        <listitem>
+
+		  <para>The name of the packages. It will copy the files which belongs to the package according to the file /var/lib/dpkg/info/$package.list.</para>
+
+		  <para>Format: ["package1","package2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>useDepends</option></term>
+        <listitem>
+
+		  <para>If you want to also install other packages required by the the initial list you specified.</para>
+
+		  <para>It looks at the line "Depends:" in the output of `dpkg -p $package`.</para>
+
+		  <para>Format: 1 (use depends) or 0 (don't use depends)</para>
+
+		  <para>Default: 0</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>blockDepends</option></term>
+        <listitem>
+
+		  <para>Useful only if useDepends=1, it prevents the installation of these packages even if dpkg says they are required.</para>
+
+		  <para>Format: ["package1","package2"]</para>
+
+		  <para>Default: []</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>debianDpkgInfoDir</option></term>
+        <listitem>
+
+		  <para>Path to the dpkg $package.list files, "%s" will be replaced by the name of the package.</para>
+
+		  <para>Format: "/path/to/info/files/%s.list"</para>
+
+		  <para>Default: "/var/lib/dpkg/info/%s.list"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Paths so specific files and commands</title>
+ 
+
+    <variablelist>
+      <varlistentry>
+        <term><option>pathToLdConfig</option></term>
+        <listitem>
+
+		  <para>Path to the executable ldconfig, used to generate the shared librairies cache. ldconfig is executed in the jail to regenerate this cache.</para>
+
+		  <para>Format: "/path/to/ldconfig"</para>
+
+		  <para>Default: "/sbin/ldconfig"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>pathToLdSoConf</option></term>
+        <listitem>
+
+		  <para>The path to the configuration files used by ldconfig, which says which directories should be scanned searching for shared librairies.</para>
+
+		  <para>Set this to None if your system doesn't use such a file.</para>
+
+		  <para>Format: "/path/to/ld.so.conf"</para>
+
+		  <para>Default: "/etc/ld.so.conf"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>pathToLdSoCache</option></term>
+        <listitem>
+
+		  <para>The path to the shared librairies cache generated by ldconfig.</para>
+
+		  <para>Format: "/path/to/ld.so.cache"</para>
+
+		  <para>Default: "/etc/ld.so.cache"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>procPath</option></term>
+        <listitem>
+
+		  <para>The path to the procfs filesystem.</para>
+
+		  <para>Format: "/path/to/proc"</para>
+
+		  <para>Default: "/proc"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>userFiles</option></term>
+        <listitem>
+
+		  <para>List of the files whose contents should be filtered, to keep only the users listed in the directive "users".</para>
+
+		  <para>Format: ["file1","file2]</para>
+
+		  <para>Default: ["/etc/passwd","/etc/shadow"]</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>groupFiles</option></term>
+        <listitem>
+
+		  <para>List of the files whose contents should be filtered, to keep only the groups listed in the directive "groups".</para>
+
+		  <para>Format: ["file1","file2]</para>
+
+		  <para>Default:["/etc/group","/etc/gshadow"]</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>tempDir</option></term>
+        <listitem>
+
+		  <para>The temporary directory where makejail can write temporary files.</para>
+
+		  <para>There may be a lot of files generated here if keepStraceOutputs=1.</para>
+
+		  <para>Format: "/temp/directory"</para>
+
+		  <para>Default: "/tmp/makejail_logs"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>psCommand</option></term>
+        <listitem>
+
+		  <para>The command line used to list running processes.</para>
+
+		  <para>The output must include the pid and the name of the process.</para>
+
+		  <para>Format: "ps [options]"</para>
+
+		  <para>Default: "ps -e"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>psColumns</option></term>
+        <listitem>
+
+		  <para>In which columns of the output of psCommand are the ids and the name of the processes.</para>
+
+		  <para>Spaces separate the columns, the first column is numbered 1.</para>
+
+		  <para>Format: (columnPid,columnProcessName)</para>
+
+		  <para>Default: [1,4]</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Commands to run to trace processes</title>
+ 
+		  <para>Here you can configure the commands which must be run to trace processes. These are called strace though you can use another program, like ktrace on OpenBSD.</para>
+
+		  <para>The defaults should be suitable for systems using strace. "-f" means strace should trace process children too. Though it's interested only in file accesses, it doesn't use "-e trace=file" because with this option it doesn't catch calls for "bind" and "connect" to sockets.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>straceCommand</option></term>
+        <listitem>
+
+		  <para>String describing the strace command when executing a command line. "%command" will be replaced by the command to execute, and "%file" by the path to the temporary trace file.</para>
+
+		  <para>Format: "strace_command [options] %command > %file"</para>
+
+		  <para>Default: "strace -f %command >/dev/null 2>>%file"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>straceCommandPid</option></term>
+        <listitem>
+
+		  <para>String describing the strace command when attaching itself to a running process. "%pid" will be replaced by the id of the process to trace, and "%file" by the path to the temporary trace file.</para>
+
+		  <para>Format: "strace_command [options] %pid > %file"</para>
+
+		  <para>Default: "strace -f -p %pid >/dev/null 2>>%file"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option> straceCommandStop</option></term>
+        <listitem>
+
+		  <para>Command to execute to stop the tracing.</para>
+
+		  <para>Format: "strace_stop_command"</para>
+
+		  <para>Default: "killall -9 strace"</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>straceCommandView</option></term>
+        <listitem>
+
+		  <para>Set this to None if the trace output files can be read directly, or the command line to execute which prints the trace on stdout. "%file" will be replaced by the name of this file.</para>
+
+		  <para>Format: "strace_command_viewer [options] %file"</para>
+
+		  <para>Default: None</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>keepStraceOutputs</option></term>
+        <listitem>
+
+		  <para>Whether makejail should remove the outputs of strace from the directory tempDir.</para>
+
+		  <para>Format: 0 (to remove the files) or 1 (to keep them)</para>
+
+		  <para>Default: 0</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Configuration directives - Patterns in the trace outputs</title>
+ 
+		  <para>These are three patterns which should match failed attempts to access a file in the traces.</para>
+
+		  <para>You must define a group (between parenthesis) which will be matched by the path of the file.</para>
+
+		  <para>The syntax of the regular expressions in python is detailed here: http://py-howto.sourceforge.net/regex/regex.html</para>
+
+		  <para>If the match on a line means it is a failed attempt only if the next line matches another expression (typically a return code, no group needed), you can use an array of two strings instead of one string, the first string is the main expression, and the second one is the expression which must match the next line. See global.OpenBSD in the examples directory.</para>
+
+
+    <variablelist>
+      <varlistentry>
+        <term><option>stracePatterns</option></term>
+        <listitem>
+
+		  <para>Regular expressions to detect a failed attempt at accessing a file.</para>
+
+		  <para>If the file exists outside the jail makejail will copy it into the jail.</para>
+
+		  <para>Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]</para>
+
+		  <para>Default: ['.*\("([^"]*)",.*\) .* ENOENT .*']</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>straceCreatePatterns</option></term>
+        <listitem>
+
+		  <para>Regular expressions to detect a failed attempt at creating a file.</para>
+
+		  <para>If the directory where the file should be created exists outside the jail, it will create it inside the jail.</para>
+
+		  <para>Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]</para>
+
+		  <para>Default: ['.*\("([^"]*)",.*O_CREAT.*\) .* ENOENT .*','bind\(.* path="([^"]*)".* ENOENT .*']</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term><option>straceSocketPatterns</option></term>
+        <listitem>
+
+		  <para>Regular expressions to detect a failed attempt at accessing a socket.</para>
+
+		  <para>makejail can't create the socket, it will just print a warning.</para>
+
+		  <para>Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]</para>
+
+		  <para>Default: ['connect\(.* path="([^"]*)".* ENOENT .*']</para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>AUTHOR</title>
+    <para>This manual page was written by &dhusername;, <email>alain@onesite.org</email></para>
+	<para>This software comes with no warranty.</para>
+  </refsect1>
+  <refsect1>
+    <title>REPORTING BUGS</title>
+    <para>Report bugs to makejail@floc.net</para>
+  </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

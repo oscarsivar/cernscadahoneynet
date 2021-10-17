@@ -1,0 +1,24 @@
+
+EMAILDESTINATION = joel.arnold@cern.ch;
+
+CRI = $(IgnoreNone)-SHa;
+BIN = $(ReadOnly);
+LOG = $(Growing);
+DYN = $(Dynamic);
+DEV = $(Device);
+
+(
+	emailto = $(EMAILDESTINATION)
+)
+{
+	/			-> $(DYN) (recurse = false);
+	/boot			-> $(BIN);
+	!/boot/System.map-*;
+	/bin			-> $(BIN);
+	/dev			-> $(DEV);
+	/etc/passwd		-> $(CRI);
+	/lib			-> $(BIN);
+	/sbin			-> $(BIN);
+	/usr/bin		-> $(BIN);
+	/usr/sbin		-> $(BIN);
+}

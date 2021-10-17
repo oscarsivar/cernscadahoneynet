@@ -1,0 +1,69 @@
+----------------------------------------------------------------------------
+     Tripwire v2.3.1 - distributed under the General Public License
+                                 README
+                             March 3, 2001
+----------------------------------------------------------------------------
+
+DESCRIPTION
+
+Tripwire v2.3.1 is an Open Source Security, Intrusion Detection,
+Damage Assessment and Recovery, Forensics software.
+
+This is a policy-based program which monitors file system changes as specified
+in a policy file.  An encrypted database is used to help keep track of
+modifications that have occurred in a system.
+
+
+INSTALLATION NOTES
+
+Please see the file INSTALL for instructions on building Tripwire.
+
+
+LINUX DISTRIBUTIONS
+
+- RedHat 7.0 (Intel only)
+
+- Caldera 2.4 Workstation
+
+- Turbolinux 6.0.1 
+
+- SuSE 6.4
+
+- Other major Linux distributions are currently under evaluation
+  please check http://www.tripwire.org/ for further information.
+
+- No other distributions have been Tripwire-certified as of September 1st,
+  2000
+
+- Please see WISHLIST for further information about the
+  software development direction and which platforms are being considered for
+  future support (These files distributed with Source Distributions only).
+
+
+BSD DISTRIBUTIONS
+
+- FreeBSD 4.2
+
+
+WEBSITES
+
+For access to the latest Open Source Tripwire v2.3.1 software and for community
+contact information, please see:
+http://www.tripwire.org/
+
+For Tripwire's Enterprise-ready/Network-enabled products, please see
+http://www.tripwire.com/
+
+For access to the latest open-sourced Tripwire software, please visit
+Tripwire's project at:
+http://sourceforge.net/projects/tripwire/
+
+
+=============================================================================
+
+ Copyright 2000 Tripwire, Inc. Tripwire is a registered trademark of Tripwire,
+ Inc. in the United States and other countries. All rights reserved.
+
+ Linux is a registered trademark of Linus Torvalds.
+
+=============================================================================

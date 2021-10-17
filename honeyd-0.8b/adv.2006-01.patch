@@ -1,0 +1,85 @@
+Index: ipfrag.c
+===================================================================
+RCS file: /cvs/honeyd/ipfrag.c,v
+retrieving revision 1.22
+retrieving revision 1.23
+diff -u -r1.22 -r1.23
+--- ipfrag.c	13 Aug 2005 03:03:28 -0000	1.22
++++ ipfrag.c	17 Jan 2006 16:32:38 -0000	1.23
+@@ -56,6 +56,7 @@
+ 	DIFF(a->ip_src, b->ip_src);
+ 	DIFF(a->ip_dst, b->ip_dst);
+ 	DIFF(a->ip_id, b->ip_id);
++	DIFF(a->ip_proto, b->ip_proto);
+ 
+ 	return (0);
+ }
+@@ -80,13 +81,14 @@
+ }
+ 
+ struct fragment *
+-ip_fragment_find(ip_addr_t src, ip_addr_t dst, u_short id)
++ip_fragment_find(ip_addr_t src, ip_addr_t dst, u_short id, u_char proto)
+ {
+ 	struct fragment tmp, *frag;
+ 
+ 	tmp.ip_src = src;
+ 	tmp.ip_dst = dst;
+ 	tmp.ip_id = id;
++	tmp.ip_proto = proto;
+ 
+ 	frag = SPLAY_FIND(fragtree, &fragments, &tmp);
+ 
+@@ -154,7 +156,8 @@
+ }
+ 
+ struct fragment *
+-ip_fragment_new(ip_addr_t src, ip_addr_t dst, u_short id, enum fragpolicy pl)
++ip_fragment_new(ip_addr_t src, ip_addr_t dst, u_short id, u_char proto,
++    enum fragpolicy pl)
+ {
+ 	struct fragment *tmp = NULL;
+ 	struct timeval tv = { IPFRAG_TIMEOUT, 0};
+@@ -177,6 +180,7 @@
+ 	tmp->ip_src = src;
+ 	tmp->ip_dst = dst;
+ 	tmp->ip_id = id;
++	tmp->ip_proto = proto;
+ 	tmp->fragp = pl;
+ 
+ 	TAILQ_INIT(&tmp->fraglist);
+@@ -333,7 +337,7 @@
+ 	if (fragp == FRAG_DROP)
+ 		goto drop;
+ 
+-	fragq = ip_fragment_find(ip->ip_src, ip->ip_dst, ip->ip_id);
++	fragq = ip_fragment_find(ip->ip_src, ip->ip_dst, ip->ip_id, ip->ip_p);
+ 
+ 	/* Nothing here for now */
+ 	off = ntohs(ip->ip_off);
+@@ -358,7 +362,8 @@
+ 		goto freeall;
+ 
+ 	if (fragq == NULL) {
+-		fragq = ip_fragment_new(ip->ip_src, ip->ip_dst, ip->ip_id, fragp);
++		fragq = ip_fragment_new(ip->ip_src, ip->ip_dst, ip->ip_id,
++		    ip->ip_p, fragp);
+ 		if (fragq == NULL)
+ 			goto drop;
+ 	}
+Index: ipfrag.h
+===================================================================
+RCS file: /cvs/honeyd/ipfrag.h,v
+retrieving revision 1.7
+retrieving revision 1.8
+diff -u -r1.7 -r1.8
+--- ipfrag.h	13 Aug 2005 03:03:28 -0000	1.7
++++ ipfrag.h	17 Jan 2006 16:32:38 -0000	1.8
+@@ -27,6 +27,7 @@
+ 	ip_addr_t ip_src;	/* Network order */
+ 	ip_addr_t ip_dst;	/* Network order */
+ 	u_short ip_id;		/* Network order */
++	u_char ip_proto;
+ 
+ 	u_short maxlen;		
+ 	u_short hadlastpacket;

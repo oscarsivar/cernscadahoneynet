@@ -1,0 +1,423 @@
+.\" This -*- nroff -*- file has been generated from
+.\" DocBook SGML with docbook-to-man on Debian GNU/Linux.
+...\"
+...\"	transcript compatibility for postscript use.
+...\"
+...\"	synopsis:  .P! <file.ps>
+...\"
+.de P!
+\\&.
+.fl			\" force out current output buffer
+\\!%PB
+\\!/showpage{}def
+...\" the following is from Ken Flowers -- it prevents dictionary overflows
+\\!/tempdict 200 dict def tempdict begin
+.fl			\" prolog
+.sy cat \\$1\" bring in postscript file
+...\" the following line matches the tempdict above
+\\!end % tempdict %
+\\!PE
+\\!.
+.sp \\$2u	\" move below the image
+..
+.de pF
+.ie     \\*(f1 .ds f1 \\n(.f
+.el .ie \\*(f2 .ds f2 \\n(.f
+.el .ie \\*(f3 .ds f3 \\n(.f
+.el .ie \\*(f4 .ds f4 \\n(.f
+.el .tm ? font overflow
+.ft \\$1
+..
+.de fP
+.ie     !\\*(f4 \{\
+.	ft \\*(f4
+.	ds f4\"
+'	br \}
+.el .ie !\\*(f3 \{\
+.	ft \\*(f3
+.	ds f3\"
+'	br \}
+.el .ie !\\*(f2 \{\
+.	ft \\*(f2
+.	ds f2\"
+'	br \}
+.el .ie !\\*(f1 \{\
+.	ft \\*(f1
+.	ds f1\"
+'	br \}
+.el .tm ? font underflow
+..
+.ds f1\"
+.ds f2\"
+.ds f3\"
+.ds f4\"
+'\" t 
+.ta 8n 16n 24n 32n 40n 48n 56n 64n 72n  
+.TH "MAKEJAIL" "8" 
+.SH "NAME" 
+makejail \(em Helps creating and maintaining a chroot jail 
+.SH "SYNOPSIS" 
+.PP 
+\fBmakejail\fP [\fIconfiguration_file\fP]  
+.SH "Overview" 
+.PP 
+The objective of makejail is to help an administrator creating and updating a chroot jail with short configuration files. 
+.PP 
+Makejails attempts to guess and install into the jail all files required by the daemon. 
+.PP 
+You have to understand how it works to configure it efficiently. 
+.SH "Detailed mechanism" 
+.PP 
+The list of these files is built from several sources: 
+.PP 
+- the main method is to trace what files the daemon attempts to access, add them into the jail and restart again until no further file is found. 
+.PP 
+- a list of files manually given in the configuration file. 
+.PP 
+- the files which belongs to a package and eventually the packages it requires. 
+.PP 
+When a file is added into the jail: 
+.PP 
+- the shared librairies it needs (given by ldd) are added too. 
+.PP 
+- upper directories are created if needed. 
+.PP 
+- if the file is a symbolic link, the target is added too. 
+.PP 
+- all the checks to determine what files a file needs are recursive. 
+.PP 
+- all files are copied maintaining the originals' ownerships and permissions. 
+.PP 
+Some files are handled with a special method: 
+.PP 
+- when the file is below /proc, the procfs filesystem is mounted inside the jail. 
+.PP 
+- when the file is a socket, it's not copied. 
+.PP 
+- when the file is the shared library cache, it's not copied, ldconfig is run at the end. 
+.PP 
+The steps of makejail are: 
+.PP 
+- eventually remove the files in the jail first. 
+.PP 
+- if you specified some packages, add all the files which belongs to them. 
+.PP 
+- if you specified some paths to include, add the files matching these patterns. 
+.PP 
+- start the daemon inside the jail, and trace it with strace, add the files it attempts to open which exist outside the jail, kill it and start again until no more file is found. 
+.PP 
+- start the daemon inside the jail, and trace it while running some test processes outside the jail, see with strace what files the daemon attempts to open. 
+.SH "Configuration files" 
+.PP 
+The file must be written in a correct python syntax. The good news is that the syntax is simple, and you can eventually write some python code to define the syntax. 
+.PP 
+Some default directives may be defined in /etc/makejail, the configuration file given on the command line has predecence. 
+.PP 
+All paths you use in the configuration file must be absolute. 
+.SH "Configuration directives - Basics" 
+.PP 
+Defaults won't work, you must define specific values for these directives. 
+.IP "\fBchroot\fP" 10 
+The path to the chroot. The directory must exist and have correct permissions and ownerships. 
+.IP "" 10 
+Format: "/path/to/jail" 
+.IP "" 10 
+Default: None 
+.IP "\fBtestCommandsInsideJail\fP" 10 
+The commands used to start the daemon, a good starting point may be the command used in the startup script in /etc/init.d 
+.IP "" 10 
+Format: ["command1","command2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBprocessNames\fP" 10 
+The name of the runnning processes after the daemon has been started. 
+.IP "" 10 
+Format: ["process1","process2"] 
+.IP "" 10 
+Default: [] 
+.SH "Configuration directives - Tests" 
+.PP 
+After the daemon itself has been chrooted successfully, some commands can be executed from outside the jail to test the daemon. 
+.IP "\fBtestCommandsOutsideJail\fP" 10 
+The test commands which should be executed. 
+.IP "" 10 
+Format: ["command1","command2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBpromptForInteractiveTests\fP" 10 
+Whether makejail should pause so you can stress the daemon yourself. 
+.IP "" 10 
+Use only if makejail is run interactively, and don't redirect its outputs. 
+.IP "" 10 
+Format: 1 (prompt) or 0 (don't prompt) 
+.IP "" 10 
+Default: 0 
+.IP "\fBpromptForSomeMoreTests=0\fP" 10 
+Whether makejail should loop while running tests until you tell it it's over. 
+.IP "" 10 
+Use only if makejail is run interactively, and don't redirect its outputs. 
+.IP "" 10 
+Format: 1 (prompt) or 0 (don't prompt) 
+.IP "" 10 
+Default: 0 
+.IP "\fBmaxExecutions\fP" 10 
+Maximum number of times a command is executed before aborting. 
+.IP "" 10 
+Format: integer 
+.IP "" 10 
+Default: 100 
+.SH "Configuration directives - Copying files" 
+.IP "\fBdoNotCopy\fP" 10 
+Do not copy the files matching these patterns according to the rules used by the Unix shell. 
+.IP "" 10 
+No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched. 
+.IP "" 10 
+Format: ["path1","path2"] 
+.IP "" 10 
+Default: ["/usr/share/doc","/usr/share/info","/usr/share/man","/etc/fstab","/etc/mtab"] 
+.IP "\fBforceCopy\fP" 10 
+When initializing the jail, copy the files matching these patterns according to the rules used by the Unix shell. 
+.IP "" 10 
+No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched. 
+.IP "" 10 
+Format: ["path1","path2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBcleanJailFirst\fP" 10 
+Whether makejail should remove files in jail first. 
+.IP "" 10 
+Format: 0 to do nothing or 1 to remove files from the jail. 
+.IP "" 10 
+Default: 1 
+.IP "\fBpreserve\fP" 10 
+Useful only if cleanJailFirst=1, makejail won't remove files or directories if their path begins with one of the strings in this list. 
+.IP "" 10 
+When updating a jail, you should for example put the locations of log files here. 
+.IP "" 10 
+Format: ["path1","path2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBmaxRemove\fP" 10 
+Useful only if cleanJailFirst=1, makejail aborts if it's about to remove more than this number of files from the jail. 
+.IP "" 10 
+This may prevent makejail from erasing unwanted files if you wrote chroot="/usr" or if you have mounted a partition in the jail. 
+.IP "" 10 
+Format: integer 
+.IP "" 10 
+Default: 500 
+.IP "\fBusers\fP" 10 
+Makejail will filter the files listed in the directive userFiles and copy only lines matching these users, which means lines starting with "user:" 
+.IP "" 10 
+You can use ["*"] to disable filtering and copy the whole file. 
+.IP "" 10 
+Format: ["user1","user2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBgroups\fP" 10 
+Makejail will filter the files listed in the directive groupFiles and copy only lines matching these groups, which means lines starting with "group:" 
+.IP "" 10 
+You can use ["*"] to disable filtering and copy the whole file. 
+.IP "" 10 
+Format: ["group1","group2"] 
+.IP "" 10 
+Default: [] 
+.SH "Configuration directives - Timing" 
+.PP 
+These times are in seconds, the values are the duration of sleeps at various stages of makejail. 
+.IP "\fBsleepAfterStartCommand\fP" 10 
+Duration of sleep after starting the daemon, after this delay makejail considers it's in a correctly running state. 
+.IP "" 10 
+Format: floating number 
+.IP "" 10 
+Default: 2 
+.IP "\fBsleepAfterTest\fP" 10 
+Duration of sleep after a test command has been run, after this delay makejail considers the daemon has finished its tasks related to this command. 
+.IP "" 10 
+Format: floating number 
+.IP "" 10 
+Default: 2 
+.IP "\fBsleepAfterKillall\fP" 10 
+Duration of sleep after killing the daemon processes. 
+.IP "" 10 
+Format: floating number 
+.IP "" 10 
+Default: 1 
+.IP "\fBsleepAfterStraceAttachPid\fP" 10 
+Duration of sleep after attaching strace to a running process id. 
+.IP "" 10 
+Format: floating number 
+.IP "" 10 
+Default: 0.2 
+.SH "Configuration directives - Debian specific" 
+.PP 
+I initially thought with starting with the package description, but this method usually installs a bunch of files you won't need. 
+.IP "\fBpackages\fP" 10 
+The name of the packages. It will copy the files which belongs to the package according to the file /var/lib/dpkg/info/$package.list. 
+.IP "" 10 
+Format: ["package1","package2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBuseDepends\fP" 10 
+If you want to also install other packages required by the the initial list you specified. 
+.IP "" 10 
+It looks at the line "Depends:" in the output of `dpkg -p $package`. 
+.IP "" 10 
+Format: 1 (use depends) or 0 (don't use depends) 
+.IP "" 10 
+Default: 0 
+.IP "\fBblockDepends\fP" 10 
+Useful only if useDepends=1, it prevents the installation of these packages even if dpkg says they are required. 
+.IP "" 10 
+Format: ["package1","package2"] 
+.IP "" 10 
+Default: [] 
+.IP "\fBdebianDpkgInfoDir\fP" 10 
+Path to the dpkg $package.list files, "%s" will be replaced by the name of the package. 
+.IP "" 10 
+Format: "/path/to/info/files/%s.list" 
+.IP "" 10 
+Default: "/var/lib/dpkg/info/%s.list" 
+.SH "Configuration directives - Paths so specific files and commands" 
+.IP "\fBpathToLdConfig\fP" 10 
+Path to the executable ldconfig, used to generate the shared librairies cache. ldconfig is executed in the jail to regenerate this cache. 
+.IP "" 10 
+Format: "/path/to/ldconfig" 
+.IP "" 10 
+Default: "/sbin/ldconfig" 
+.IP "\fBpathToLdSoConf\fP" 10 
+The path to the configuration files used by ldconfig, which says which directories should be scanned searching for shared librairies. 
+.IP "" 10 
+Set this to None if your system doesn't use such a file. 
+.IP "" 10 
+Format: "/path/to/ld.so.conf" 
+.IP "" 10 
+Default: "/etc/ld.so.conf" 
+.IP "\fBpathToLdSoCache\fP" 10 
+The path to the shared librairies cache generated by ldconfig. 
+.IP "" 10 
+Format: "/path/to/ld.so.cache" 
+.IP "" 10 
+Default: "/etc/ld.so.cache" 
+.IP "\fBprocPath\fP" 10 
+The path to the procfs filesystem. 
+.IP "" 10 
+Format: "/path/to/proc" 
+.IP "" 10 
+Default: "/proc" 
+.IP "\fBuserFiles\fP" 10 
+List of the files whose contents should be filtered, to keep only the users listed in the directive "users". 
+.IP "" 10 
+Format: ["file1","file2] 
+.IP "" 10 
+Default: ["/etc/passwd","/etc/shadow"] 
+.IP "\fBgroupFiles\fP" 10 
+List of the files whose contents should be filtered, to keep only the groups listed in the directive "groups". 
+.IP "" 10 
+Format: ["file1","file2] 
+.IP "" 10 
+Default:["/etc/group","/etc/gshadow"] 
+.IP "\fBtempDir\fP" 10 
+The temporary directory where makejail can write temporary files. 
+.IP "" 10 
+There may be a lot of files generated here if keepStraceOutputs=1. 
+.IP "" 10 
+Format: "/temp/directory" 
+.IP "" 10 
+Default: "/tmp/makejail_logs" 
+.IP "\fBpsCommand\fP" 10 
+The command line used to list running processes. 
+.IP "" 10 
+The output must include the pid and the name of the process. 
+.IP "" 10 
+Format: "ps [options]" 
+.IP "" 10 
+Default: "ps -e" 
+.IP "\fBpsColumns\fP" 10 
+In which columns of the output of psCommand are the ids and the name of the processes. 
+.IP "" 10 
+Spaces separate the columns, the first column is numbered 1. 
+.IP "" 10 
+Format: (columnPid,columnProcessName) 
+.IP "" 10 
+Default: [1,4] 
+.SH "Configuration directives - Commands to run to trace processes" 
+.PP 
+Here you can configure the commands which must be run to trace processes. These are called strace though you can use another program, like ktrace on OpenBSD. 
+.PP 
+The defaults should be suitable for systems using strace. "-f" means strace should trace process children too. Though it's interested only in file accesses, it doesn't use "-e trace=file" because with this option it doesn't catch calls for "bind" and "connect" to sockets. 
+.IP "\fBstraceCommand\fP" 10 
+String describing the strace command when executing a command line. "%command" will be replaced by the command to execute, and "%file" by the path to the temporary trace file. 
+.IP "" 10 
+Format: "strace_command [options] %command > %file" 
+.IP "" 10 
+Default: "strace -f %command >/dev/null 2>>%file" 
+.IP "\fBstraceCommandPid\fP" 10 
+String describing the strace command when attaching itself to a running process. "%pid" will be replaced by the id of the process to trace, and "%file" by the path to the temporary trace file. 
+.IP "" 10 
+Format: "strace_command [options] %pid > %file" 
+.IP "" 10 
+Default: "strace -f -p %pid >/dev/null 2>>%file" 
+.IP "\fB straceCommandStop\fP" 10 
+Command to execute to stop the tracing. 
+.IP "" 10 
+Format: "strace_stop_command" 
+.IP "" 10 
+Default: "killall -9 strace" 
+.IP "\fBstraceCommandView\fP" 10 
+Set this to None if the trace output files can be read directly, or the command line to execute which prints the trace on stdout. "%file" will be replaced by the name of this file. 
+.IP "" 10 
+Format: "strace_command_viewer [options] %file" 
+.IP "" 10 
+Default: None 
+.IP "\fBkeepStraceOutputs\fP" 10 
+Whether makejail should remove the outputs of strace from the directory tempDir. 
+.IP "" 10 
+Format: 0 (to remove the files) or 1 (to keep them) 
+.IP "" 10 
+Default: 0 
+.SH "Configuration directives - Patterns in the trace outputs" 
+.PP 
+These are three patterns which should match failed attempts to access a file in the traces. 
+.PP 
+You must define a group (between parenthesis) which will be matched by the path of the file. 
+.PP 
+The syntax of the regular expressions in python is detailed here: http://py-howto.sourceforge.net/regex/regex.html 
+.PP 
+If the match on a line means it is a failed attempt only if the next line matches another expression (typically a return code, no group needed), you can use an array of two strings instead of one string, the first string is the main expression, and the second one is the expression which must match the next line. See global.OpenBSD in the examples directory. 
+.IP "\fBstracePatterns\fP" 10 
+Regular expressions to detect a failed attempt at accessing a file. 
+.IP "" 10 
+If the file exists outside the jail makejail will copy it into the jail. 
+.IP "" 10 
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]] 
+.IP "" 10 
+Default: ['.*\("([ 
+"]*)",.*\) .* ENOENT .*'] 
+.IP "\fBstraceCreatePatterns\fP" 10 
+Regular expressions to detect a failed attempt at creating a file. 
+.IP "" 10 
+If the directory where the file should be created exists outside the jail, it will create it inside the jail. 
+.IP "" 10 
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]] 
+.IP "" 10 
+Default: ['.*\("([ 
+"]*)",.*O_CREAT.*\) .* ENOENT .*','bind\(.* path="([ 
+"]*)".* ENOENT .*'] 
+.IP "\fBstraceSocketPatterns\fP" 10 
+Regular expressions to detect a failed attempt at accessing a socket. 
+.IP "" 10 
+makejail can't create the socket, it will just print a warning. 
+.IP "" 10 
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]] 
+.IP "" 10 
+Default: ['connect\(.* path="([ 
+"]*)".* ENOENT .*'] 
+.SH "AUTHOR" 
+.PP 
+This manual page was written by Alain Tesio, alain@onesite.org 
+.PP 
+This software comes with no warranty. 
+.SH "REPORTING BUGS" 
+.PP 
+Report bugs to makejail@floc.net 
+...\" created by instant / docbook-to-man, Sat 02 Nov 2002, 19:30 

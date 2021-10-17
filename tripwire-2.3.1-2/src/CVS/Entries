@@ -1,0 +1,28 @@
+/check_st.pl/1.1.1.1/Sat Oct 28 00:25:34 2000//
+/dep_addprefix.pl/1.1.1.1/Sat Oct 28 00:25:34 2000//
+/rmcr.pl/1.1.1.1/Sat Oct 28 00:25:34 2000//
+/tripwire-2.3.spec/1.1.1.1/Sat Oct 28 00:25:34 2000//
+D/STLport-4.0////
+D/core////
+D/cryptlib////
+D/db////
+D/fco////
+D/fs////
+D/make_include////
+D/parser////
+D/siggen////
+D/test////
+D/test-harness////
+D/tripwire////
+D/tw////
+D/twadmin////
+D/twcrypto////
+D/twparser////
+D/twprint////
+D/util////
+/Makefile/1.2/Sun Mar  4 04:03:52 2001//
+/buildnum.bat/1.3/Sun Mar  4 00:20:54 2001//
+/buildnum.h/1.3/Sun Mar  4 00:20:54 2001//
+/buildnum.txt/1.3/Sun Mar  4 00:20:54 2001//
+/buildnuminc.pl/1.2/Sun Mar  4 00:20:52 2001//
+/prime.pl/1.2/Sun Feb 25 20:02:55 2001//

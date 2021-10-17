@@ -1,0 +1,249 @@
+                                                                    
++--------------------------------------------------------------------+
++-- CERN SCADA Honeynet Installation Guide --------------------------+
++--------------------------------------------------------------------+
++--------------------------------------------------------------------+
++------------------------------ Joel Arnold - EPFL -+- CERN - 2006 --+
+
+
+INTRODUCTION
+============
+
+This is the CERN SCADA Honeynet Installation guide. This package
+allows you to set up quickly a SCADA Honeypot PC.
+
+I assume you are already familiar with the concept of honeypots, and
+with the following tools :
+ - Honeyd
+ - Arpd
+ - Snort
+ - Tripwire
+
+The idea is to deploy several SCADA Honeypots on your network, thus
+forming a SCADA Honeynet.
+
+The architecture of the Honeynet would be as follows :
+ - Several Honeypot PCs deployed on the network;
+ - A single Honeynet Master PC charge of supervising them.
+
+Honeypot PCs
+------------+
+
+Each of the Honeypot PCs runs Honeyd configured to simulate two PLCs,
+a Siemens PLC and a Schneider PLC. The services running on the PLCs
+are emulated with custom Python scripts.
+
+Honeyd is chrooted in a jail prepared with Makejail, and runs with
+limited privileges. Network traffic to the virtual PLCs is redirected
+to the Honeypot with Arpd.
+
+All the traffic reaching the network interface of the Honeypot is
+recorded with Snort, and daily filesystem checks are performed with
+Tripwire to ensure that the PC has not been compromised.
+
+Master PC
+---------+
+
+The Honeynet Master PC collects the logs from the Honeypots via SFTP,
+and sends email reports to the administrators of the Honeynet.
+
+Architecture
+------------+
+
+MASTER MACHINE
+|
+|                     /--- SIEMENS PLC
+|-------- SLAVE 01 --<
+|                     \--- SCHNEIDER PLC
+|
+|                     /--- SIEMENS PLC
+|-------- SLAVE 02 --<
+|                     \--- SCHNEIDER PLC
+|
+|                     /--- SIEMENS PLC
+|-------- SLAVE 03 --<
+|                     \--- SCHNEIDER PLC
+...
+
+
+SCRIPTS
+=======
+
+1. FTP Schneider
+----------------+
+
+Simulates the FTP server running on a Schneider TSX ETY5101, with the
+slight difference that it is impossible to successfully log in.
+
+2. Telnet Schneider
+-------------------+
+
+Simulates the Telnet server of a Schneider TSX ETY5101, including
+the options negotiation (up to a certain level). It behaves 
+consistently with the real one. For example, it doesn't output the
+password when it is typed, and it is possible to erase typed 
+characters. Again, it is impossible to log in.
+
+3. HTTP Schneider
+-----------------+
+
+More than a simulation, this is a basic HTTP server imitating the
+behavior of the web server running in the Schneider TSX ETY5101.
+
+4. Modbus
+---------+
+
+A Modbus server implementing the following function codes :
+ -  1 - Read Coil Status
+ -  2 - Read Input Status
+ -  3 - Read Holding Registers
+ -  4 - Read Input Registers
+ -  5 - Write Coil
+ -  6 - Write Single Register
+ - 15 - Force Multiple Coils
+ - 16 - Write Multiple Registers
+
+These are all the functions implemented by the Schneider TSX ETY5101.
+
+5. FTP Siemens
+--------------+
+
+Simulates the FTP server of the Siemens CP 343-1 IT, and again, it's
+impossible to log in.
+
+6. HTTP Siemens
+---------------+
+
+A basic web server imitating the behavior of the web server running on
+the Siemens CP 343-1 IT.
+
+7. SNMP Siemens
+---------------+
+
+Not completely finished yet, but already responds to GET and GETNEXT
+requests like the Siemens CP 343-1 IT.
+
+8. Siemens S7
+-------------+
+
+A basic simulation of the S7 server running on a CP 343-1 IT.
+
+OTHERS
+======
+
+The Nmap fingerprints of the Siemens CP 343-1 IT and of the Schneider
+TSX ETY5101 are used to avoid detection of the honeypot.
+
+
+REQUIREMENTS
+============
+
+1. Linux install
+----------------+
+
+The package was prepared to be deployed on a default CERN
+installation of Scientific Linux CERN 3. During the configuration
+process, the firewall must be disabled, and the auto-update service
+must be disabled before installing the package.
+
+To install it on other Linux distributions, you might have to tweak
+the install script, and/or install additional packages beforehand.
+
+2. Network configuration
+------------------------+
+
+You will need three IP addresses (and their related network names)
+located on the same subnet. It is necessary that the IP addresses
+can be resolved by name. The IP addresses of the slave machine and of
+the two virtual PLCs must be registered on the same port of the
+switch, or on the same hub, otherwise traffic directed to the virtual
+PLCs will be discarded at the switch. In summary, you must configure
+the switch/router to send traffic addressed to the virtual PLCs on
+the same plug the slave machine is connected to.
+
+For example :
+
+   NETWORK
+      |
+      |
+    SWITCH
+      |
+  ----------
+  |   (    /\     )
+  |   (   /  \    )
+SLAVE ( PLC1 PLC2 )
+
+This way, packets addressed to the virtual PLCs will reach the slave
+machine.
+
+But not :
+     
+    NETWORK
+       |
+       |
+     SWITCH
+     / ( | \       )
+    /  ( |  \      )
+   /   ( |   \     )
+SLAVE  ( PLC1 PLC2 )
+
+In this case, your honeypot will not work, as the switch will simply
+discard all packets addressed to the virtual PLCs.
+
+
+INSTALLATION PROCESS
+====================
+
+Two options :
+
+./install master
+
+or
+
+./install slave
+
+And the interactive installation process starts.
+
+1. Master Installation
+----------------------+
+
+Before installing the master machine, make sure that all the slaves
+machines are up and running, and accessible via the network. The 
+master machine will install a public key on each of them, allowing it
+to access them during a cron job via ssh (it is not possible to
+hardcode the passwords in a script using ssh). Then you simply have to
+follow the installation instructions.
+
+2. Slave Installation
+---------------------+
+
+Apart from the aforementioned requirements, the slave machine install
+is quite straightforward, just follow the instructions.
+
+NOTE : If you want to receive an alert when a slave machine fails the
+       hourly Tripwire test, change the email address to yours in :
+         --> files/slave/csh-tw-check
+       I'll try and change this if I get some free time...
+
+
+FAQ
+===
+
+Can I configure it to simulate other types/brands of PLCs ?
+-----------------------------------------------------------+
+
+At the moment, everything is hardcoded in the scripts. I am planning
+to factor out things, to allow configurable behavior and banners. So
+right now, you'll have to modify the scripts if you need to adapt
+them to a new PLC.
+
+
+In case you have any question on this package, you can email me at:
+
+ joel(dot)arnold(at)gmail(dot)com
+
+
+----------------------------------------------------------------
+-        Copyright (c) 2006 Joel Arnold -- EPFL & CERN         -
+----------------------------------------------------------------
+

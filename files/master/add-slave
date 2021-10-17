@@ -1,0 +1,9 @@
+#! /usr/bin/env sh
+
+newslave=$1
+newuname=$2
+file="/usr/local/sbin/cernscadahoneynet-master"
+
+cat $file | sed -e "s/slaves=\"\(.*\)\"/slaves=\"\1 $newslave\"/" -e "9s;\(.*\);sftp -b /etc/cshoneynet/cmdfile.sftp -oIdentityFile=/$newuname/.ssh/cshoneynet_id_dsa $newuname@$newslave\n\1;" > $file
+
+ssh $newuname@$newslave "umask 077; mkdir .ssh; cat >> .ssh/authorized_keys" < /root/.ssh/cshoneynet_id_dsa.pub

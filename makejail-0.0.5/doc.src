@@ -1,0 +1,409 @@
+__MANMODE=0__
+H1:Usage
+
+PRE:./makejail configuration_file
+
+__MANMODE=1__
+H1:Overview
+
+The objective of makejail is to help an administrator creating and updating a chroot jail with short configuration files.
+Makejails attempts to guess and install into the jail all files required by the daemon.
+You have to understand how it works to configure it efficiently.
+
+H1:Detailed mechanism
+
+The list of these files is built from several sources:
+- the main method is to trace what files the daemon attempts to access, add them into the jail and restart again until no further file is found.
+- a list of files manually given in the configuration file.
+- the files which belongs to a package and eventually the packages it requires.
+
+When a file is added into the jail:
+- the shared librairies it needs (given by ldd) are added too.
+- upper directories are created if needed.
+- if the file is a symbolic link, the target is added too.
+- all the checks to determine what files a file needs are recursive.
+- all files are copied maintaining the originals' ownerships and permissions.
+
+Some files are handled with a special method:
+- when the file is below /proc, the procfs filesystem is mounted inside the jail.
+- when the file is a socket, it's not copied.
+- when the file is the shared library cache, it's not copied, ldconfig is run at the end.
+
+The steps of makejail are:
+- eventually remove the files in the jail first.
+- if you specified some packages, add all the files which belongs to them.
+- if you specified some paths to include, add the files matching these patterns.
+- start the daemon inside the jail, and trace it with strace, add the files it attempts to open which exist outside the jail, kill it and start again until no more file is found.
+- start the daemon inside the jail, and trace it while running some test processes outside the jail, see with strace what files the daemon attempts to open.
+
+H1:Configuration files
+
+The file must be written in a correct python syntax. The good news is that the syntax is simple, and you can eventually write some python code to define the syntax.
+Some default directives may be defined in /etc/makejail, the configuration file given on the command line has predecence.
+All paths you use in the configuration file must be absolute.
+
+__MANMODE=2__
+H1:Configuration directives
+
+H2:Basics
+
+Defaults won't work, you must define specific values for these directives.
+
+H3:chroot
+
+The path to the chroot. The directory must exist and have correct permissions and ownerships.
+
+Format: "/path/to/jail"
+
+Default: None
+
+H3:testCommandsInsideJail
+
+The commands used to start the daemon, a good starting point may be the command used in the startup script in /etc/init.d
+
+Format: ["command1","command2"]
+
+Default: []
+
+H3:processNames
+
+The name of the runnning processes after the daemon has been started.
+
+Format: ["process1","process2"]
+
+Default: []
+
+H2:Tests
+
+After the daemon itself has been chrooted successfully, some commands can be executed from outside the jail to test the daemon.
+
+H3:testCommandsOutsideJail
+
+The test commands which should be executed.
+
+Format: ["command1","command2"]
+
+Default: []
+
+H3:promptForInteractiveTests
+
+Whether makejail should pause so you can stress the daemon yourself.
+Use only if makejail is run interactively, and don't redirect its outputs.
+
+Format: 1 (prompt) or 0 (don't prompt)
+
+Default: 0
+
+H3:promptForSomeMoreTests=0
+
+Whether makejail should loop while running tests until you tell it it's over.
+Use only if makejail is run interactively, and don't redirect its outputs.
+
+Format: 1 (prompt) or 0 (don't prompt)
+
+Default: 0
+
+H3:maxExecutions
+
+Maximum number of times a command is executed before aborting.
+
+Format: integer
+
+Default: 100
+
+H2:Copying files
+
+H3:doNotCopy
+
+Do not copy the files matching these patterns according to the rules used by the Unix shell.
+No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched.
+
+Format: ["path1","path2"]
+
+Default: ["/usr/share/doc","/usr/share/info","/usr/share/man","/etc/fstab","/etc/mtab"]
+
+H3:forceCopy
+
+When initializing the jail, copy the files matching these patterns according to the rules used by the Unix shell.
+No tilde expansion is done, but *, ?, and character ranges expressed with [] will be correctly matched.
+
+Format: ["path1","path2"]
+
+Default: []
+
+H3:cleanJailFirst
+
+Whether makejail should remove files in jail first.
+
+Format: 0 to do nothing or 1 to remove files from the jail.
+
+Default: 1
+
+H3:preserve
+
+Useful only if cleanJailFirst=1, makejail won't remove files or directories if their path begins with one of the strings in this list.
+When updating a jail, you should for example put the locations of log files here.
+
+Format: ["path1","path2"]
+
+Default: []
+
+H3:maxRemove
+
+Useful only if cleanJailFirst=1, makejail aborts if it's about to remove more than this number of files from the jail.
+This may prevent makejail from erasing unwanted files if you wrote chroot="/usr" or if you have mounted a partition in the jail.
+
+Format: integer
+
+Default: 500
+
+H3:users
+
+Makejail will filter the files listed in the directive userFiles and copy only lines matching these users, which means lines starting with "user:"
+You can use ["*"] to disable filtering and copy the whole file.
+
+Format: ["user1","user2"]
+
+Default: []
+
+H3:groups
+
+Makejail will filter the files listed in the directive groupFiles and copy only lines matching these groups, which means lines starting with "group:"
+You can use ["*"] to disable filtering and copy the whole file.
+
+Format: ["group1","group2"]
+
+Default: []
+
+H2:Timing
+
+These times are in seconds, the values are the duration of sleeps at various stages of makejail.
+
+H3:sleepAfterStartCommand
+
+Duration of sleep after starting the daemon, after this delay makejail considers it's in a correctly running state.
+
+Format: floating number
+
+Default: 2
+
+H3:sleepAfterTest
+
+Duration of sleep after a test command has been run, after this delay makejail considers the daemon has finished its tasks related to this command.
+
+Format: floating number
+
+Default: 2
+
+H3:sleepAfterKillall
+
+Duration of sleep after killing the daemon processes.
+
+Format: floating number
+
+Default: 1
+
+H3:sleepAfterStraceAttachPid
+
+Duration of sleep after attaching strace to a running process id.
+
+Format: floating number
+
+Default: 0.2
+
+H2:Debian specific
+
+I initially thought with starting with the package description, but this method usually installs a bunch of files you won't need.
+
+H3:packages
+
+The name of the packages. It will copy the files which belongs to the package according to the file /var/lib/dpkg/info/$package.list.
+
+Format: ["package1","package2"]
+
+Default: []
+
+H3:useDepends
+
+If you want to also install other packages required by the the initial list you specified.
+It looks at the line "Depends:" in the output of `dpkg -p $package`.
+
+Format: 1 (use depends) or 0 (don't use depends)
+
+Default: 0
+
+H3:blockDepends
+
+Useful only if useDepends=1, it prevents the installation of these packages even if dpkg says they are required.
+
+Format: ["package1","package2"]
+
+Default: []
+
+H3:debianDpkgInfoDir
+
+Path to the dpkg $package.list files, "%s" will be replaced by the name of the package.
+
+Format: "/path/to/info/files/%s.list"
+
+Default: "/var/lib/dpkg/info/%s.list"
+
+H2:Paths so specific files and commands
+
+H3:pathToLdConfig
+
+Path to the executable ldconfig, used to generate the shared librairies cache. ldconfig is executed in the jail to regenerate this cache.
+
+Format: "/path/to/ldconfig"
+
+Default: "/sbin/ldconfig"
+
+H3:pathToLdSoConf
+
+The path to the configuration files used by ldconfig, which says which directories should be scanned searching for shared librairies.
+Set this to None if your system doesn't use such a file.
+
+Format: "/path/to/ld.so.conf"
+
+Default: "/etc/ld.so.conf"
+
+H3:pathToLdSoCache
+
+The path to the shared librairies cache generated by ldconfig.
+
+Format: "/path/to/ld.so.cache"
+
+Default: "/etc/ld.so.cache"
+
+H3:procPath
+
+The path to the procfs filesystem.
+
+Format: "/path/to/proc"
+
+Default: "/proc"
+
+H3:userFiles
+
+List of the files whose contents should be filtered, to keep only the users listed in the directive "users".
+
+Format: ["file1","file2]
+
+Default: ["/etc/passwd","/etc/shadow"]
+
+H3:groupFiles
+
+List of the files whose contents should be filtered, to keep only the groups listed in the directive "groups".
+
+Format: ["file1","file2]
+
+Default:["/etc/group","/etc/gshadow"]
+
+H3:tempDir
+
+The temporary directory where makejail can write temporary files.
+There may be a lot of files generated here if keepStraceOutputs=1.
+
+Format: "/temp/directory"
+
+Default: "/tmp/makejail_logs"
+
+H3:psCommand
+
+The command line used to list running processes.
+The output must include the pid and the name of the process.
+
+Format: "ps [options]"
+
+Default: "ps -e"
+
+H3:psColumns
+
+In which columns of the output of psCommand are the ids and the name of the processes.
+Spaces separate the columns, the first column is numbered 1.
+
+Format: (columnPid,columnProcessName)
+
+Default: [1,4]
+
+H2:Commands to run to trace processes
+
+Here you can configure the commands which must be run to trace processes. These are called strace though you can use another program, like ktrace on OpenBSD.
+The defaults should be suitable for systems using strace. "-f" means strace should trace process children too. Though it's interested only in file accesses, it doesn't use "-e trace=file" because with this option it doesn't catch calls for "bind" and "connect" to sockets.
+
+H3:straceCommand
+
+String describing the strace command when executing a command line. "%command" will be replaced by the command to execute, and "%file" by the path to the temporary trace file.
+
+Format: "strace_command [options] %command > %file"
+
+Default: "strace -f %command >/dev/null 2>>%file"
+
+H3:straceCommandPid
+
+String describing the strace command when attaching itself to a running process. "%pid" will be replaced by the id of the process to trace, and "%file" by the path to the temporary trace file.
+
+Format: "strace_command [options] %pid > %file"
+
+Default: "strace -f -p %pid >/dev/null 2>>%file"
+
+H3: straceCommandStop
+
+Command to execute to stop the tracing.
+
+Format: "strace_stop_command"
+
+Default: "killall -9 strace"
+
+H3:straceCommandView
+
+Set this to None if the trace output files can be read directly, or the command line to execute which prints the trace on stdout. "%file" will be replaced by the name of this file.
+
+Format: "strace_command_viewer [options] %file"
+
+Default: None
+
+H3:keepStraceOutputs
+
+Whether makejail should remove the outputs of strace from the directory tempDir.
+
+Format: 0 (to remove the files) or 1 (to keep them)
+
+Default: 0
+
+H2:Patterns in the trace outputs
+
+These are three patterns which should match failed attempts to access a file in the traces.
+You must define a group (between parenthesis) which will be matched by the path of the file.
+The syntax of the regular expressions in python is detailed here: http://py-howto.sourceforge.net/regex/regex.html
+
+If the match on a line means it is a failed attempt only if the next line matches another expression (typically a return code, no group needed), you can use an array of two strings instead of one string, the first string is the main expression, and the second one is the expression which must match the next line. See global.OpenBSD in the examples directory.
+
+H3:stracePatterns
+
+Regular expressions to detect a failed attempt at accessing a file.
+If the file exists outside the jail makejail will copy it into the jail.
+
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]
+
+Default: ['.*\("([^"]*)",.*\) .* ENOENT .*']
+
+H3:straceCreatePatterns
+
+Regular expressions to detect a failed attempt at creating a file.
+If the directory where the file should be created exists outside the jail, it will create it inside the jail.
+
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]
+
+Default: ['.*\("([^"]*)",.*O_CREAT.*\) .* ENOENT .*','bind\(.* path="([^"]*)".* ENOENT .*']
+
+H3:straceSocketPatterns
+
+Regular expressions to detect a failed attempt at accessing a socket.
+makejail can't create the socket, it will just print a warning.
+
+Format: ["regexp1","regexp2",["regexp3","regexp3 for the next line"]]
+
+Default: ['connect\(.* path="([^"]*)".* ENOENT .*']
+
+__MANMODE=0__

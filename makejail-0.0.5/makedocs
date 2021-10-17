@@ -1,0 +1,201 @@
+#!/usr/bin/env python
+
+import string,os,time,re
+
+print "Making docs"
+
+docDir="doc"
+sourcePath="doc.src"
+htmlPath="%s/index.html" % docDir
+textPath="%s/README" % docDir
+manPath="manpage.sgml"
+manTemplatePath="manpage.sgml.template"
+
+if not(os.path.isdir(docDir)):
+	print "Creating directory %s" % docDir
+	os.mkdir(docDir)
+
+source=open(sourcePath)
+lines=map(string.strip,source.readlines())
+source.close()
+
+html=open(htmlPath,"w")
+text=open(textPath,"w")
+man=open(manPath,"w")
+
+html.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Makejail documentation</title>
+  </head>
+  <body>
+""")
+
+# It's amazing how much time I waste automatizing such things, but I enjoy
+def createFromTemplate(items):
+	if items.has_key('templatestring'):
+		s=items['templatestring']
+		del items['templatestring']
+	elif items.has_key('templatefile'):
+		f=open(items['templatefile'],"r")
+		s=f.read()
+		f.close()
+		del items['templatefile']
+	else:
+		raise "No template string/file"
+	startpos=string.find(s,"__INSERT=")
+	while startpos>=0:
+		endpos=string.index(s,"__",startpos+2)
+		subtemplate=s[startpos+9:endpos]
+		fsubtemplate=open(subtemplate)
+		subs=fsubtemplate.read()
+		fsubtemplate.close()
+		s=string.replace(s,"__INSERT=%s__" % fsubtemplate,subs)
+		startpos=string.find(s,"__INSERT=")
+	for key in items.keys():
+		if key[:8]=="BOOLEAN(":
+			assert key[-1]==")"
+			boolid=key[8:-1]
+			starttag="__IF(%s)__" % boolid
+			endtag="__ENDIF(%s)__" % boolid
+			elsetag="__ELSE(%s)__" % boolid
+			startpos=string.find(s,starttag)
+			while (startpos>=0):
+				endpos=string.find(s,endtag)
+				elsepos=string.find(s,elsetag,startpos,endpos)
+				beforeif=s[:startpos]
+				if elsepos==-1:
+					iftemplate=s[startpos+len(starttag):endpos]
+					elsetemplate=""
+					afterif=s[endpos+len(endtag):]
+				else:
+					iftemplate=s[startpos+len(starttag):elsepos]
+					elsetemplate=s[elsepos+len(elsetag):endpos]
+					afterif=s[endpos+len(endtag):]
+				if items[key]:
+					s=beforeif+iftemplate+afterif
+				else:
+					s=beforeif+elsetemplate+afterif
+				startpos=string.find(s,starttag)
+		elif key[:5]=="LOOP(":
+			assert key[-1]==")"
+			loopid=key[5:-1]
+			starttag="__STARTLOOP(%s)__" % loopid
+			endtag="__ENDLOOP(%s)__" % loopid
+			startpos=string.find(s,starttag)
+			while (startpos>=0):
+				endpos=string.find(s,endtag)
+				beforeloop=s[:startpos]
+				looptemplate=s[startpos+len(starttag):endpos]
+				afterloop=s[endpos+len(endtag):]
+				bodyloops=""
+				for subitems in items[key]:
+					loopitems={'templatestring':looptemplate}
+					for subkey in subitems.keys():
+						loopitems[subkey]=subitems[subkey]
+					bodyloop=createFromTemplate(loopitems)
+					bodyloops=bodyloops+bodyloop
+				s=beforeloop+bodyloops+afterloop
+				startpos=string.find(s,starttag)
+		else:
+			if items[key]==None:
+				raise "Error : items['%s']=None" % key
+			if type(items[key])==type([]):
+				items[key]=string.join(items[key],"\n")
+			try:
+				s=string.replace(s,"__%s__" % key,items[key])
+			except:
+				raise "Type Error for the key '%s'" % key
+	return s
+
+manModeRegExp=re.compile("^__MANMODE=([0-2])__$")
+manMode=None
+lastTag={"H1":None,"H2":None,"H3":None}
+manItems=[]
+
+for line in lines:
+
+	manMatch=manModeRegExp.match(line)
+	if manMatch:
+		manMode=int(manMatch.groups()[0])
+		continue
+
+	if ":" in line:
+		tag=string.split(line,":")[0]
+		if tag in ("H1","H2","H3","PRE"):
+			line=string.join(string.split(line,":")[1:],":")
+			lastTag[tag]=line
+			if tag=="H1":
+				lastTag["H2"]=None
+				lastTag["H3"]=None
+			elif tag=="H2":
+				lastTag["H3"]=None
+		else:
+			tag=None
+	else:
+		tag=None
+
+	if tag:
+		htmlString="<%s>%s</%s>" % (tag,line,tag)
+		if tag=="PRE":
+			textString=line
+		elif tag=="H1":
+			sep="*" * (len(line)+4)
+			textString="%s\n* %s *\n%s" % (sep,line,sep)
+		elif tag=="H2":
+			textString="%s\n%s" % (line,"="*len(line))
+		elif tag=="H3":
+			textString="%s\n%s" % (line,"-"*len(line))
+		else:
+			raise ValueError
+	else:
+		htmlString="%s<br>" % line
+		textString=line
+
+	if manMode and line:
+		if manMode==1:
+			if tag:
+				assert tag=="H1"
+				manItems.append({"H1":line,
+								 "BOOLEAN(TWOLEVELS)":0,
+								 "LOOP(H1PARAS)":[]})
+			else:
+				manItems[-1]["LOOP(H1PARAS)"].append({"H1PARA":line})
+		elif manMode==2:
+			if tag=="H1":
+				pass
+			elif tag=="H2":
+				manItems.append({"H1":"%s - %s" % (lastTag["H1"],line),
+								 "BOOLEAN(TWOLEVELS)":1,
+								 "LOOP(H1PARAS)":[],
+								 "LOOP(SUBITEMS)":[]})
+			elif tag=="H3":
+				manItems[-1]["LOOP(SUBITEMS)"].append({"H2":line,
+													   "LOOP(H2PARAS)":[]})
+			else:
+				if lastTag["H3"]:
+					manItems[-1]["LOOP(SUBITEMS)"][-1]["LOOP(H2PARAS)"].append({"H2PARA":line})
+				else:
+					manItems[-1]["LOOP(H1PARAS)"].append({"H1PARA":line})
+		else:
+			raise ValueError
+
+	html.write("%s\n" % htmlString)
+	text.write("%s\n" % textString)
+
+for endTag in ("body","html"):
+	html.write("</%s>\n" % endTag)
+
+
+manTemplateItems={"templatefile":manTemplatePath,
+				  "SYSTEMDATE":time.strftime("%B %d, %Y",time.localtime(time.time())),
+				  "LOOP(ITEMS)":manItems}
+
+man.write(createFromTemplate(manTemplateItems))
+
+html.close()
+print "HTML file %s generated" % htmlPath
+text.close()
+print "Text file %s generated" % textPath
+man.close()
+print "Man page %s generated" % manPath

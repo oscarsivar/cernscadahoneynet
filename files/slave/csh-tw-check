@@ -1,0 +1,17 @@
+#! /usr/bin/env sh
+
+# CHANGE THIS vvv TO HAVE ALERT EMAILS SENT TO YOU ###############
+admin="root@localhost"
+hostname=`hostname`
+
+cd /tmp
+
+tripwire --check -c /var/lib/tripwire/tw.cfg -p /var/lib/tripwire/tw.pol > twreport.txt
+mv /var/lib/tripwirereport/* .
+
+cat twreport.txt | grep "Total violations found:  0" > /dev/null
+
+if [ ! $? == 0 ]; then
+	echo -e "Subject: CSH $hostname compromised\n\nTripwire detected violations to the policy on $hostname. It will be halted immediately." | sendmail $admin
+	/sbin/halt
+fi 

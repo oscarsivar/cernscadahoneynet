@@ -1,0 +1,56 @@
+
+1. How to build tripwire
+-----------------------------
+
+(*) Make sure that you have gcc version 2.95.2 or better installed,
+and make sure that the executables g++ and c++ are in your path and
+that the first instance of them in your path are indeed the 2.95.2
+binaries (g++ -v, c++ -v).
+
+(*) The master Makefile is located in <src-root>/src/Makefile. It can
+create release and debug builds of four executables: tripwire,
+twadmin, twprint, and siggen.
+
+(*) To specify which platform, Linux or FreeBSD, you wish to build,
+edit the master Makefile and set SYSPRE appropriately (see the
+comments in the Makefile).
+
+(*) To build all of the release binaries, type "make release". For
+debug binaries, type "make debug". To make a single binary, the target
+name is the name of the executable with either "_r" or "_d" appended
+to the name, depending on whether you want to make a debug or release
+binary. For example, release siggen is built with the command "make
+siggen_r" and debug twadmin is built with "make twadmin_d"
+
+(*) Release binaries are created in the directory 
+    <src-root>/bin/i686-pc-linux_r; debug binaries in 
+    <src-root>/bin/i686-pc-linux_d.
+    
+(*) Other useful Makefile targets:
+      make clean:     remove object files but not static libraries or executables
+      make clobber:   erase all output files, except for STLPort
+      make distclean: erase all object files, libraries and executables, 
+                      including STLPort.
+
+(*) See section 3 for instructions on installing the binaries after
+they have been built.
+
+2. FHS
+------------------------------
+
+This release of tripwire differs from the commercial product in one
+way: it conforms to the Filesystem Hierarchy Standard (FHS). See
+http://www.pathname.com/fhs for details on this standard. Besides
+changes in the install process, the only functional change to the
+product involves where tripwire looks for its configuration file when
+it is not specified on the command line. In commercial tripwire, it
+looked for a file named "tw.cfg" in the same directory as the tripwire
+binary; in this release, it looks for the file /etc/tripwire/tw.cfg.
+
+If you would like to build binaries that are functionally equivalent
+to commercial tripwire, make the following change:
+
+In file src/core/platform.h, change the line:
+#define USES_FHS IS_LINUX
+to:
+#define USES_FHS 0

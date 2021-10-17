@@ -1,0 +1,20 @@
+# $Id: cernscadahoneynet.rules v.0.1 2005 Oct 14 15:12 $
+#
+# Rules to log all interesting traffic on our virtual PLCs
+#
+
+alert tcp $EXTERNAL_NET any <> $HOME_NET 21 (msg:"Traffic on FTP Port"; rev:1;)
+alert tcp $EXTERNAL_NET any <> $HOME_NET 23 (msg:"Traffic on Telnet Port"; rev:1;)
+alert tcp $EXTERNAL_NET any <> $HOME_NET 80 (msg:"Traffic on HTTP Port"; rev:1;)
+alert tcp $EXTERNAL_NET any <> $HOME_NET 102 (msg:"Traffic on S7 Port"; rev:1;)
+alert tcp $EXTERNAL_NET any <> $HOME_NET 161 (msg:"Traffic on SNMP Port"; rev:1;)
+alert tcp $EXTERNAL_NET any <> $HOME_NET 502 (msg:"Traffic on MODBUS/TCP Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 21 (msg:"Traffic on FTP Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 23 (msg:"Traffic on Telnet Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 80 (msg:"Traffic on HTTP Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 102 (msg:"Traffic on S7 Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 161 (msg:"Traffic on SNMP Port"; rev:1;)
+alert udp $EXTERNAL_NET any <> $HOME_NET 502 (msg:"Traffic on MODBUS/TCP Port"; rev:1;)
+log tcp $EXTERNAL_NET any <> $HOME_NET any (msg:"Traffic to/from Virtual PLC"; rev:1;)
+log udp $EXTERNAL_NET any <> $HOME_NET any (msg:"Traffic to/from Virtual PLC"; rev:1;)
+log icmp $EXTERNAL_NET any <> $HOME_NET any (msg:"Traffic to/from Virtual PLC"; rev:1;)

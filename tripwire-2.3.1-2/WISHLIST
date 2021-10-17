@@ -1,0 +1,134 @@
+Tripwire TODO/Wish List 
+Date:   July 11, 2000
+Author: Matthew Brinkley
+Edit's: rjf
+
+===============================================================================
+1. Cool Features
+===============================================================================
+* Facilitate porting code to other platforms by either integrating autoconf 
+or writing our own platform.h auto-configuration script.
+
+* XML policy file
+
+* Give twprint the ability to print report files and database entries in XML. 
+Also, it would be cool to import/export databases as XML, csv, or something 
+similar 
+
+* twprint should be able to print individual entries from a database file 
+
+* I once wrote a small program that allowed you to check out a tripwire 
+database's contents through an interactive shell. You could traverse it just 
+like a file system and print out the attributes of individual entries. It 
+would be nice if this were included in the actual product (I think it is just 
+#ifdefed out right now) 
+
+* Scripting language interface for Tripwire report and database files, and 
+maybe core tripwire functionality (like generate database, integrity check, 
+etc.). I think perl, python, and maybe java would be a cool start. 
+
+* Tripwire SNMP integration ... similar to email notification and syslog 
+writing; each time an integrity check is run, tripwire sends the report 
+summary as an SNMP alert.
+
+* The ability to search a tripwire database for specific values, such as 
+specific property values, file names, etc. Note that this might be either 
+hard to implement or really slow because we are not indexing any of the 
+fields in the database ... maybe this means we also add the ability to create 
+indexes on tripwire databases?
+
+* Proactive database update: this can be used when files have changed in a 
+known way (i.e. new software installed) and one wants to notify tripwire of 
+the change and update the database before the violations are caught in the 
+next integrity check. (Implementation note: This is dangerous because the 
+file can change between the time the authorized change happens and the 
+tripwire database is updated. One possible solution to this is having a 
+"verbose" mode that prints out all of the values being integrated into the 
+database, so an anal tripwire user can scan the modify times or MD5s and make 
+sure they look reasonable.)
+
+* Report file naming: as we all know, there are many problems associated with 
+naming reports based on the current date/time. I think tripwire should act 
+like the HQ Agent and write the report with a well-known file name and then 
+copy it over to "filename-DATE" if the user wants a history of reports. That 
+way, it is always obvious what the most recent report file is. It would also 
+be cool if one could specify report names with $DATE on the command line. If 
+more than one type of integrity check were being run on a system (such as 
+hourly checks and daily checks), this would allow the reports to be named 
+differently but still contain the date stamp indicating what time they were 
+run at.
+
+* The ability to compare two database or subsets of two databases. Also, 
+the ability to "rename" the root directories when comparing. This would 
+facilitate integrity checking the installation of a software package on 
+many machines, even if it is installed in different locations on each 
+machine. This would help tripwire function as a "policy conformance" tool.
+
+* Wildcard support in policy files
+
+* (maybe) Make the individual genre code (fs, ntfs, ntreg) live in a 
+separate dll/so and provide an SDK or cookbook for people to implement 
+their own genres.
+
+* A GUI configuration file editor
+
+* A GUI policy file editor, maybe with some functionality to make authoring 
+policies easier (code templates, rule wizards, syntax hilighting, etc.)
+
+* A streamlined way to change the site or local passphrase, automatically 
+decrypting and re-encrypting all data files as necessary
+
+===============================================================================
+2. Code base cleanup
+===============================================================================
+* Remove iFCOVisitor and all derived classes from the code base (dead code)
+
+* Clean up unit tests, system initialization, and error reporting (error buckets)
+
+* Get parser working with flex/bison
+
+* Get locale and other i18n code synced with Brian's most recent round of changes
+
+* Implement shrinking the database file (block file) when the database shrinks 
+greatly from a high water mark. I think the code is in place, it is just 
+commented out.
+
+* Make it possible to free FCO Name nodes, either through a special compilation 
+directive or providing a garbage collection method. I think the latter is 
+probably the easiest way to go.
+
+===============================================================================
+3. "Out there" ideas
+===============================================================================
+* Keep a revision history in the database. This would support the 
+"trend analysis" people have been talking about, as well as allowing you to 
+roll back changes and see all of the changes that happened in the past n days 
+(to prevent a mischievous soul from updating your database behind your back)
+
+* Related to the previous idea, store "user names" with all database changes, 
+so you can see not only when something was changed, but also by whom
+
+* (NOTE: this could probably be explained much better <g>) Problem: Tripwire 
+does not catch the following user errors: update a report file into the old 
+database, update an earlier report file than was previously used to update 
+the database, update a database with the same report twice. Actually, it 
+probably would error out in all of these cases, but there is no good error 
+message, and the user doesn't know it is the wrong thing to do until they try 
+to do it. Also, there is no way to programmatically tell (i.e. by the HQ Agent) 
+whether a given report file has been integrated into the database and is thus 
+"meaningful". Solution: Associate a Unique Identifier with all newly created 
+databases. Also associate a sequence number with it. Each time an integrity 
+check is run, the sequence number is incremented and associated with the newly 
+created report file. Each time a report is integrated back into the database, 
+another number called the "revision number" is written into the database. 
+Thus, at any given time you can tell which report in a collection is the most 
+recent, and which reports have been written into the database. 
+
+* I once got this little demo program from ntinternals.com that installed a 
+file system device driver and hooked all OS calls to open, read, and write 
+files or registry entries. It would just spew what it found to a window, but 
+I was thinking it would be cool to make something like this the basis of 
+"Real Time Tripwire". You specify a policy in much the same way that you 
+specify policies for tripwire now. Each time a kernel file call was hooked, 
+tripwire would see if the call would violate a rule, and takes some action 
+if it would. 

@@ -1,0 +1,747 @@
+#!/usr/bin/env bash
+
+# install
+#
+# Copyright (C) 2006  Joel Arnold - EPFL & CERN
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# Change these variables to your liking.
+CSH_USER="cshoneynet"
+CSH_INSTALL_PATH="/var/cshoneynet"
+CSH_JAIL_PATH="/var/chroot"
+CSH_LOGS_PATH="/var/log/cshoneynet"
+CSH_ETC="/etc/cshoneynet"
+
+VERSION="0.2"
+HOSTNAME=`uname -n`
+MAKEJAIL="/usr/sbin/makejail"
+CHROOT="/usr/sbin/chroot"
+ARPD="/usr/local/sbin/arpd"
+HONEYD="/usr/local/bin/honeyd"
+SNORT="/usr/local/bin/snort"
+TRIPWIRE="/usr/sbin/tripwire"
+PYTHON="/usr/bin/python"
+SH="/bin/sh"
+
+usage_and_exit() {
+	cat <<-EOF
+	
+	CERN SCADA HONEYNET INSTALLER $VERSION
+	
+	Usage:
+	        $0 slave
+	          to install a slave machine
+	     or
+	        $0 master
+	          to install a master machine
+
+	EOF
+	exit 1
+}
+
+error() {
+	echo "$1"
+	exit 1
+}
+
+check_root() {
+	if [ ! "$USER" == "root" ]
+	then
+		echo "It is necessary to be logged as root to perform the installation"
+		error
+	fi
+}
+
+process_args_and_install() {
+	if [ ! $# -gt 0 ]
+	then
+		usage_and_exit
+	elif [ "$1" == "slave" ]
+	then
+		slave_install
+	elif [ "$1" == "master" ]
+	then
+		master_install
+	else
+		usage_and_exit
+	fi 
+}
+
+slave_install() {
+	clear
+	cat <<-EOF
+	----------------------------------------------------------------------------
+	----- CERN SCADA HONEYNET PROJECT ------------------------------------------
+	----------------------------------------------------------------------------
+	----- SLAVE INSTALLATION ---------------------------------------------------
+
+	
+	Requirements:
+
+	                + SLC3 Default Install
+	                 - Without the CERN post-install auto configuration
+	                 - With autoupdate turned off at firstboot (autocheck is OK)
+	                + Formatted and empty floppy disk
+	                + 2 IP addresses on the same subnet as this machine
+	                  (You need their network names without the cern.ch suffix)
+	
+	----------------------------------------------------------------------------
+	
+	EOF
+	
+	echo -n "Continue ? (y/n) : "
+	read answer
+	[ "$answer" == "y" ] || error
+	echo -e "\n"
+
+	echo -n "Installing libdnet       "
+	cd libdnet-1.10
+	./configure > ../libdnet-install.log 2> ../errors.log
+	echo -n ".."
+	make >> ../libdnet-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../libdnet-install.log 2>> ../errors.log
+	cd ..
+
+	echo -n "Installing libevent      "
+	cd libevent-1.1a
+	./configure > ../libevent-install.log 2>> ../errors.log
+	echo -n ".."
+	make >> ../libevent-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../libevent-install.log 2>> ../errors.log
+	cd ..
+
+	echo -n "Installing libpcap       "
+	cd libpcap-0.9.3
+	./configure > ../libpcap-install.log 2>> ../errors.log
+	echo -n ".."
+	make >> ../libpcap-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../libpcap-install.log 2>> ../errors.log
+	cd ..
+
+	echo $PATH | sed 's/:/\n/g' | grep "/usr/local/bin" > /dev/null || PATH="$PATH:/usr/local/bin"
+	/sbin/ldconfig /usr/local/lib
+
+	echo -n "Installing honeyd        "
+	cd honeyd-0.8b
+	./configure > ../honeyd-install.log 2>> ../errors.log
+	echo -n ".."
+	make >> ../honeyd-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../honeyd-install.log 2>> ../errors.log
+	cd ..
+
+	echo -e "Installing makejail      ....\n"
+	cd makejail-0.0.5
+	make install > ../makejail-install.log 2>> ../errors.log
+	cd ..
+	
+	echo -n "Installing arpd          "
+	cd arpd
+	./configure > ../arpd-install.log 2>> ../errors.log
+	echo -n ".."
+	make >> ../arpd-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../arpd-install.log 2>> ../errors.log
+	cd ..
+
+	echo -n "Installing snort         "
+	cd snort-2.4.3
+	./configure > ../snort-install.log 2>> ../errors.log
+	echo -n ".."
+	make >> ../snort-install.log 2>> ../errors.log
+	echo -e "..\n"
+	make install >> ../snort-install.log 2>> ../errors.log
+	cd ..
+	if [ ! -d /var/log/snort ]; then
+		mkdir /var/log/snort
+	else
+		rm -rf /var/log/snort/*
+	fi
+	if [ ! -d /etc/snort ]; then
+		mkdir /etc/snort
+		#if [ ! -d /etc/snort/rules ]; then
+		#	mkdir /etc/snort/rules
+		#fi
+	fi
+	cp -rf ./files/snort/* /etc/snort
+
+	echo -e "Installing tripwire\n"
+	echo -n "  Please enter site passphrase  (min 8 characters) : "
+	read -s TRW_SITE_PASSPH
+	length=`expr length $TRW_SITE_PASSPH`
+	while [ "8" -gt "$length" ]
+	do
+		echo -ne "\n  Passphrase too short, (r)etry or (a)bort ? "
+		read answer
+		if [ "$answer" == "r" ]
+		then
+			echo -n "  Please enter site passphrase  (min 8 characters) : "
+			read -s TRW_SITE_PASSPH
+			length=`expr length $TRW_SITE_PASSPH`
+		else
+			exit 0
+		fi
+	done
+	echo ""
+	echo -n "  Please enter local passphrase (min 8 characters) : "
+	read -s TRW_LOCAL_PASSPH
+	length=`expr length $TRW_LOCAL_PASSPH`
+	while [ "8" -gt "$length" ]
+	do
+		echo -ne "\n  Passphrase too short, (r)etry or (a)bort ? "
+		read answer
+		if [ "$answer" == "r" ]
+		then
+			echo -n "  Please enter local passphrase  (min 8 characters) : "
+			read -s TRW_LOCAL_PASSPH
+			length=`expr length $TRW_LOCAL_PASSPH`
+		else
+			exit 0
+		fi
+	done
+	echo ""
+	if [ -d /var/lib/tripwire ]; then
+		rm -rf /var/lib/tripwire/*
+	else
+		mkdir /var/lib/tripwire
+	fi
+	cd tripwire-2.3.1-2
+	$SH install.sh ./install.cfg -n -s $TRW_SITE_PASSPH -l $TRW_LOCAL_PASSPH > ../tripwire-install.log 2>> ../errors.log
+	cd ..
+	
+	echo -e "\nConfiguring the honeypot\n"
+	if [ -d $CSH_INSTALL_PATH ]; then
+		rm -rf $CSH_INSTALL_PATH
+	fi
+	echo -n "  Enter the name of the first virtual PLC          : "
+	read PLC_1_NAME
+	PLC_1_IP=`gethostip -d $PLC_1_NAME 2> /dev/null`
+	while [ $? != "0" ]
+	do
+		echo -n "  Unable to resolve $PLC_1_NAME (r)etry or (a)bort ? "
+		read answer
+		if [ "$answer" == "r" ]
+		then
+			echo -n "  Enter the name of the first virtual PLC          : "
+			read PLC_1_NAME
+			PLC_1_IP=`gethostip -d $PLC_1_NAME 2> /dev/null`
+		else
+			exit 0
+		fi
+	done
+	echo -n "  Enter the name of the second virtual PLC         : "
+	read PLC_2_NAME
+	PLC_2_IP=`gethostip -d $PLC_2_NAME 2> /dev/null`
+	while [ $? != "0" ]
+	do
+		echo -n "  Unable to resolve $PLC_2_NAME (r)etry or (a)bort ? "
+		read answer
+		if [ "$answer" == "r" ]
+		then
+			echo -n "  Enter the name of the second virtual PLC          : "
+			read PLC_2_NAME
+			PLC_2_IP=`gethostip -d $PLC_2_NAME 2> /dev/null`
+		else
+			exit 0
+		fi
+	done
+	
+	cat > ./files/conf/honeyd.conf <<-EOF
+	create $PLC_1_NAME
+	set $PLC_1_NAME default tcp action reset
+	set $PLC_1_NAME default udp action reset
+	set $PLC_1_NAME default icmp action open
+	set $PLC_1_NAME personality "Siemens CP 343-1 IT FW 1.1.4"
+	add $PLC_1_NAME tcp port 21 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-ftp-siemens.py"
+	add $PLC_1_NAME tcp port 80 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-http-siemens.py"
+	add $PLC_1_NAME tcp port 102 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-s7.py"
+	add $PLC_1_NAME udp port 161 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-snmp-siemens.py"
+	bind $PLC_1_IP $PLC_1_NAME
+	create $PLC_2_NAME
+	set $PLC_2_NAME default tcp action reset
+	set $PLC_2_NAME default udp action reset
+	set $PLC_2_NAME default icmp action open
+	set $PLC_2_NAME personality "Schneider TSX Premium ETY5101 FW 1.2"
+	add $PLC_2_NAME tcp port 21 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-ftp-schneider.py"
+	add $PLC_2_NAME tcp port 23 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-telnet-schneider.py"
+	add $PLC_2_NAME tcp port 80 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-http-schneider.py"
+	add $PLC_2_NAME tcp port 502 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-modbus.py"
+	bind $PLC_2_IP $PLC_2_NAME
+	EOF
+	
+	cat >> /usr/local/share/honeyd/nmap.assoc <<-EOF
+	Siemens CP 343-1 IT FW 1.1.4;
+	Schneider TSX Premium ETY5101 FW 1.2;
+	EOF
+
+	cat >> /usr/local/share/honeyd/nmap.prints <<-EOF
+	
+	Fingerprint Siemens CP 343-1 IT FW 1.1.4
+	TSeq(Class=RI%gcd=2%SI=2EF7CE%IPID=I%TS=U)
+	TSeq(Class=TR%IPID=I%TS=U)
+	TSeq(Class=RI%gcd=1%SI=3AC138%IPID=I%TS=U)
+	T1(Resp=Y%DF=N%W=230%ACK=S++%Flags=AS%Ops=ME)
+	T2(Resp=N)
+	T3(Resp=Y%DF=N%W=230%ACK=S++%Flags=AS%Ops=ME)
+	T4(Resp=Y%DF=N%W=0%ACK=O%Flags=R%Ops=)
+	T5(Resp=Y%DF=N%W=0%ACK=S++%Flags=AR%Ops=)
+	T6(Resp=Y%DF=N%W=0%ACK=O%Flags=R%Ops=)
+	T7(Resp=Y%DF=N%W=0%ACK=S++%Flags=AR%Ops=)
+	PU(Resp=Y%DF=N%TOS=0%IPLEN=38%RIPTL=148%RID=E%RIPCK=E%UCK=F%ULEN=134%DAT=E)
+	
+	Fingerprint Schneider TSX Premium ETY5101 FW 1.2
+	TSeq(Class=64K%IPID=I%TS=U)
+	T1(Resp=Y%DF=N%W=2000%ACK=S++%Flags=AS%Ops=MNW)
+	T2(Resp=N)
+	T3(Resp=Y%DF=N%W=2000%ACK=O%Flags=A%Ops=)
+	T4(Resp=Y%DF=N%W=2000%ACK=O%Flags=R%Ops=)
+	T5(Resp=Y%DF=N%W=0%ACK=S++%Flags=AR%Ops=)
+	T6(Resp=Y%DF=N%W=0%ACK=O%Flags=R%Ops=)
+	T7(Resp=Y%DF=N%W=0%ACK=S%Flags=AR%Ops=)
+	PU(Resp=Y%DF=N%TOS=0%IPLEN=38%RIPTL=148%RID=E%RIPCK=0%UCK=0%ULEN=134%DAT=E)
+	EOF
+
+	cat > ./files/conf/makejail.conf <<-EOF
+	chroot="$CSH_JAIL_PATH"
+	forceCopy=["$CSH_INSTALL_PATH/*","$CSH_INSTALL_PATH/scripts/*","$CSH_INSTALL_PATH/scripts/web/*","$CSH_INSTALL_PATH/scripts/web/images/*","$CSH_INSTALL_PATH/scripts/web/secure/*","$CSH_INSTALL_PATH/scripts/web/unsecure/*","$CSH_INSTALL_PATH/scripts/web/unsecure/user/*"]
+	users=["$CSH_USER"]
+	groups=["$CSH_USER"]
+	testCommandsInsideJail=["$HONEYD -i eth0 -u 6666 -g 6666 -l $CSH_INSTALL_PATH/logs/honeyd.log.log -s $CSH_INSTALL_PATH/logs/honeyd.sys.log -f $CSH_INSTALL_PATH/conf/honeyd.conf -p /usr/local/share/honeyd/nmap.prints -a /usr/local/share/honeyd/nmap.assoc -x /usr/local/share/honeyd/xprobe2.conf $PLC_1_IP $PLC_2_IP","$PYTHON $CSH_INSTALL_PATH/conf/testimports.py"]
+	processNames=["honeyd"]
+	EOF
+
+	cat > /etc/snort/snort.conf <<-EOF
+	var HOME_NET [$PLC_1_IP/32,$PLC_2_IP/32]
+	var EXTERNAL_NET any
+	var DNS_SERVERS \$HOME_NET
+	var SMTP_SERVERS \$HOME_NET
+	var HTTP_SERVERS \$HOME_NET
+	var SQL_SERVERS \$HOME_NET
+	var TELNET_SERVERS \$HOME_NET
+	var SNMP_SERVERS \$HOME_NET
+	var HTTP_PORTS 80
+	var SHELLCODE_PORTS !80
+	var ORACLE_PORTS 1521
+	var AIM_SERVERS [64.12.24.0/23,64.12.28.0/23,64.12.161.0/24,64.12.163.0/24,64.12.200.0/24,205.188.3.0/24,205.188.5.0/24,205.188.7.0/24,205.188.9.0/24,205.188.153.0/24,205.188.179.0/24,205.188.248.0/24]
+	var RULE_PATH ./rules
+	config disable_decode_alerts
+	preprocessor flow: stats_interval 0 hash 2
+	preprocessor frag3_global: max_frags 65536
+	preprocessor frag3_engine: policy first detect_anomalies
+	preprocessor stream4: disable_evasion_alerts
+	preprocessor stream4_reassemble
+	preprocessor http_inspect: global \
+	    iis_unicode_map unicode.map 1252
+	preprocessor http_inspect_server: server default \
+	    profile all ports { 80 8080 8180 } oversize_dir_length 500
+	preprocessor rpc_decode: 111 32771
+	preprocessor bo
+	preprocessor telnet_decode
+	preprocessor sfportscan: proto  { all } \
+				 memcap { 10000000 } \
+				 sense_level { low }
+	preprocessor xlink2state: ports { 25 691 }
+	output alert_fast: snort.alert
+	output log_tcpdump: snort.log
+	include classification.config
+	include reference.config
+	include \$RULE_PATH/cernscadahoneynet.rules
+	EOF
+
+	echo -e "\nPreparing jail for the honeypot..."
+	mkdir $CSH_INSTALL_PATH
+	mkdir $CSH_INSTALL_PATH/conf
+	cp ./files/conf/testimports.py $CSH_INSTALL_PATH/conf/
+	cp ./files/conf/honeyd.conf $CSH_INSTALL_PATH/conf/
+	mkdir $CSH_INSTALL_PATH/scripts
+	cp -rf ./files/scripts/* $CSH_INSTALL_PATH/scripts/
+	mkdir $CSH_INSTALL_PATH/logs
+	mkdir $CSH_INSTALL_PATH/data
+	groupadd -g 6666 $CSH_USER
+	useradd -u 6666 -g $CSH_USER $CSH_USER
+	chown -Rf $CSH_USER:$CSH_USER $CSH_INSTALL_PATH
+	mkdir $CSH_JAIL_PATH
+
+	# Makejail
+	cp ./files/conf/makejail.conf $CSH_INSTALL_PATH/conf/makejail.conf
+	$MAKEJAIL $CSH_INSTALL_PATH/conf/makejail.conf > makejail-conf.log
+
+	# Init tripwire database on floppy
+	echo -e "\nInitializing the Tripwire database..."
+	$TRIPWIRE --init -P $TRW_LOCAL_PASSPH -c /var/lib/tripwire/tw.cfg -p /var/lib/tripwire/tw.pol -d /var/lib/tripwire/$HOSTNAME.twd > ./tripwire-init-out.log 2> ./tripwire-init-err.log
+	rm -f /var/lib/tripwire/*.txt
+	if [ -d /var/lib/tripwire-tmp ]; then
+		rm -rf /var/lib/tripwire-tmp/*
+	else
+		mkdir /var/lib/tripwire-tmp
+	fi
+	mv /var/lib/tripwire/* /var/lib/tripwire-tmp/
+	echo -ne "\n  Insert a formatted floppy disk in fd0 and press Enter : "
+	read answer
+	mount /dev/fd0 /var/lib/tripwire
+	rm -rf /var/lib/tripwire/*
+	mv /var/lib/tripwire-tmp/* /var/lib/tripwire/
+	rmdir /var/lib/tripwire-tmp/
+	$TRIPWIRE --check -n -s -c /var/lib/tripwire/tw.cfg -p /var/lib/tripwire/tw.pol -d /var/lib/tripwire/$HOSTNAME.twd
+	$TRIPWIRE --update -r /var/lib/tripwirereport/*.twr -P $TRW_LOCAL_PASSPH -c /var/lib/tripwire/tw.cfg -p /var/lib/tripwire/tw.pol -d /var/lib/tripwire/$HOSTNAME.twd -a -s
+	rm -f /var/lib/tripwirereport/*
+	umount /var/lib/tripwire
+	echo -ne "\n  Remove floppy disk, write-protect it, put it back in and press Enter : "
+	read answer
+	mount /dev/fd0 /var/lib/tripwire
+
+	cat > /etc/cron.daily/cernscadahoneynet-slave <<-EOF
+	#!/usr/bin/env sh
+	
+	TIMESTAMP=\`date +%Y%m%d\`
+
+	if [ ! -d /var/log/cshoneynet ]; then
+		mkdir /var/log/cshoneynet
+	fi
+	if [ ! -d /var/log/cshoneynet/backup ]; then
+		mkdir /var/log/cshoneynet/backup
+	fi
+	
+	mkdir /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP
+	mkdir /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP-full
+	cd /var/log/cshoneynet/
+	
+	# Stop the service
+	/etc/init.d/cernscadahoneynet stop
+	
+	# Snort
+	mv /var/log/snort/* /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP
+	
+	# Restart the service
+	/etc/init.d/cernscadahoneynet start
+	
+	# Honeyd
+	cp $CSH_JAIL_PATH$CSH_INSTALL_PATH/logs/* /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP
+	ls $CSH_JAIL_PATH$CSH_INSTALL_PATH/logs/* | awk '{system("echo -n > " \$1)}'
+	
+	# Tripwire
+	tripwire --check -c /var/lib/tripwire/tw.cfg -p /var/lib/tripwire/tw.pol > /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP/twreport.txt
+	mv /var/lib/tripwirereport/* /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP
+	
+	# Save all the logs to the full archive
+	cp /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP/* /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP-full/
+	tar czf /var/log/cshoneynet/backup/$HOSTNAME-\$TIMESTAMP-full.tgz $HOSTNAME-\$TIMESTAMP-full
+	rm -rf /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP-full/
+	
+	# Check for size constraints
+	tar czf $HOSTNAME-\$TIMESTAMP.tgz $HOSTNAME-\$TIMESTAMP
+	while [ \`wc -c /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP.tgz | awk '{ print \$1 }'\` -gt 10000000 ]
+	do
+		# Remove the biggest file
+		biggest=/var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP/\`ls -l /var/log/cshoneynet/$HOSTNAME-\$TIMESTAMP/ | sort -nr -k5,5 | head -n 1 | awk '{ print \$8 }'\`
+		basename biggest >> toobigfiles.txt
+		rm biggest 
+		tar czf $HOSTNAME-\$TIMESTAMP.tgz $HOSTNAME-\$TIMESTAMP
+	done
+	rm -rf $HOSTNAME-\$TIMESTAMP
+	EOF
+
+	chmod a+x /etc/cron.daily/cernscadahoneynet-slave
+
+	cat > /etc/init.d/cernscadahoneynet <<-EOF
+	#!/bin/bash
+	# chkconfig: 5 95 05
+	# description: The CERN SCADA Honeynet start process
+	
+	start() {
+	  echo "Starting CERN SCADA Honeynet"
+
+	  echo \$PATH | sed 's/:/\\n/g' | grep "/usr/local/bin" > /dev/null || PATH="\$PATH:/usr/local/bin"
+	
+	  PLC_1_IP=\`gethostip -d $PLC_1_NAME\`
+	  PLC_2_IP=\`gethostip -d $PLC_2_NAME\`
+
+	  cat > /etc/snort/snort.conf <<-EOF2
+		var HOME_NET [\$PLC_1_IP/32,\$PLC_2_IP/32]
+		var EXTERNAL_NET any
+		var DNS_SERVERS \\\$HOME_NET
+		var SMTP_SERVERS \\\$HOME_NET
+		var HTTP_SERVERS \\\$HOME_NET
+		var SQL_SERVERS \\\$HOME_NET
+		var TELNET_SERVERS \\\$HOME_NET
+		var SNMP_SERVERS \\\$HOME_NET
+		var HTTP_PORTS 80
+		var SHELLCODE_PORTS !80
+		var ORACLE_PORTS 1521
+		var AIM_SERVERS [64.12.24.0/23,64.12.28.0/23,64.12.161.0/24,64.12.163.0/24,64.12.200.0/24,205.188.3.0/24,205.188.5.0/24,205.188.7.0/24,205.188.9.0/24,205.188.153.0/24,205.188.179.0/24,205.188.248.0/24]
+		var RULE_PATH ./rules
+		config disable_decode_alerts
+		preprocessor flow: stats_interval 0 hash 2
+		preprocessor frag3_global: max_frags 65536
+		preprocessor frag3_engine: policy first detect_anomalies
+		preprocessor stream4: disable_evasion_alerts
+		preprocessor stream4_reassemble
+		preprocessor http_inspect: global \
+		    iis_unicode_map unicode.map 1252
+		preprocessor http_inspect_server: server default \
+		    profile all ports { 80 8080 8180 } oversize_dir_length 500
+		preprocessor rpc_decode: 111 32771
+		preprocessor bo
+		preprocessor telnet_decode
+		preprocessor sfportscan: proto  { all } \
+					 memcap { 10000000 } \
+					 sense_level { low }
+		preprocessor xlink2state: ports { 25 691 }
+		output alert_fast: snort.alert
+		output log_tcpdump: snort.log
+		include classification.config
+		include reference.config
+		include \\\$RULE_PATH/cernscadahoneynet.rules
+		EOF2
+
+	  cat > $CSH_JAIL_PATH$CSH_INSTALL_PATH/conf/honeyd.conf <<-EOF2
+		create $PLC_1_NAME
+		set $PLC_1_NAME default tcp action reset
+		set $PLC_1_NAME default udp action reset
+		set $PLC_1_NAME default icmp action open
+		set $PLC_1_NAME personality "Siemens CP 343-1 IT FW 1.1.4"
+		add $PLC_1_NAME tcp port 21 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-ftp-siemens.py"
+		add $PLC_1_NAME tcp port 80 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-http-siemens.py"
+		add $PLC_1_NAME tcp port 102 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-s7.py"
+		add $PLC_1_NAME udp port 161 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-snmp-siemens.py"
+		bind \$PLC_1_IP $PLC_1_NAME
+		create $PLC_2_NAME
+		set $PLC_2_NAME default tcp action reset
+		set $PLC_2_NAME default udp action reset
+		set $PLC_2_NAME default icmp action open
+		set $PLC_2_NAME personality "Schneider TSX Premium ETY5101 FW 1.2"
+		add $PLC_2_NAME tcp port 21 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-ftp-schneider.py"
+		add $PLC_2_NAME tcp port 23 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-telnet-schneider.py"
+		add $PLC_2_NAME tcp port 80 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-http-schneider.py"
+		add $PLC_2_NAME tcp port 502 "$PYTHON $CSH_INSTALL_PATH/scripts/honeyd-modbus.py"
+		bind \$PLC_2_IP $PLC_2_NAME
+		EOF2
+	
+	  mount /dev/fd0 /var/lib/tripwire 2> /dev/null
+	  mount -t proc /proc $CSH_JAIL_PATH/proc 2> /dev/null
+		
+	  $ARPD -i eth0 \$PLC_1_IP \$PLC_2_IP 
+	  $CHROOT $CSH_JAIL_PATH $HONEYD -i eth0 -u 6666 -g 6666 -l $CSH_INSTALL_PATH/logs/honeyd.log.log -s $CSH_INSTALL_PATH/logs/honeyd.sys.log -f $CSH_INSTALL_PATH/conf/honeyd.conf -p /usr/local/share/honeyd/nmap.prints -a /usr/local/share/honeyd/nmap.assoc -x /usr/local/share/honeyd/xprobe2.conf \$PLC_1_IP \$PLC_2_IP
+	  $SNORT -D -i eth0 -c /etc/snort/snort.conf
+	}
+	
+	stop() {
+	  echo "Stopping CERN SCADA Honeynet"
+	  ps -A | awk '/arpd/ {system("kill -9 " \$1)}'
+	  ps -A | awk '/honeyd/ {system("kill -9 " \$1)}'
+	  ps -A | awk '/snort/ {system("kill -9 " \$1)}'
+	}
+	
+	RETVAL=0
+	
+	case "\$1" in
+	  start)
+	    start
+	    ;;
+	  stop)
+	    stop
+	    ;;
+	  *)
+	    echo "Usage: cernscadahoneynet {start|stop}"
+	    RETVAL=1
+	    ;;
+	esac
+	exit \$RETVAL
+	EOF
+	
+	chmod a+x /etc/init.d/cernscadahoneynet
+
+	cp files/slave/csh-tw-check /etc/cron.hourly/csh-tw-check
+	chmod a+x /etc/cron.hourly/csh-tw-check
+
+	echo -ne "\nAdd CERN SCADA Honeynet to boot processes ? (y/n) : "
+	read answer
+	if [ "$answer" == "y" ]
+	then
+		cd /etc/init.d
+		chkconfig --add cernscadahoneynet
+	else
+		echo -e "  To do it :\n    chkconfig --add /etc/init.d/cernscadahoneynet"
+	fi
+	echo "Install complete ! Launching honeypot..."
+	/etc/init.d/cernscadahoneynet start
+}
+
+master_install() {
+	clear
+	cat <<-EOF
+	----------------------------------------------------------------------------
+	----- CERN SCADA HONEYNET PROJECT ------------------------------------------
+	----------------------------------------------------------------------------
+	----- MASTER INSTALLATION --------------------------------------------------
+
+	
+	Requirements:
+
+	                + SLC3 Default Install
+					
+	----------------------------------------------------------------------------
+	
+	EOF
+	
+	echo -n "Continue ? (y/n) : "
+	read answer
+	[ "$answer" == "y" ] || exit 1
+	echo -e "\n"
+	if [ ! -d /etc/cshoneynet ]; then
+		mkdir /etc/cshoneynet
+	fi
+	if [ ! -d /var/log/cshoneynet ]; then
+		mkdir /var/log/cshoneynet
+	fi
+	onemore="1"
+	count="0"
+	cat > /etc/ssh/ssh_config <<-EOF
+	Host *
+	EOF
+	cat /etc/crontab | grep -q cernscadahoneynet-master
+	if [ ! $? == "0" ]
+	then
+		cat >> /etc/crontab <<-EOF
+		# CERN SCADA Honeynet
+		00 6 * * * root /usr/local/sbin/cernscadahoneynet-master
+		EOF
+	fi
+	ssh-keygen -t dsa -f /root/.ssh/cshoneynet_id_dsa -N "" -q
+	echo -n "Enter the administrator(s) email addresses (space separated) : "
+	read admins
+	echo -n "Enter list of ip addresses of secure hosts allowed to interact with honeypots (space separated) : "
+	read secureiplist
+	slaves=""
+	while [ $onemore != "0" ]; do
+		echo -n "Enter the name of the slave machine   : "
+		read hostname
+		echo -n "Enter the account name on the slave machine : "
+		read username
+		echo ""
+		ssh $username@$hostname "umask 077; cat >> .ssh/authorized_keys" < /root/.ssh/cshoneynet_id_dsa.pub
+		cat > /etc/cshoneynet/cmdfile.sftp <<-EOF
+		get /var/log/cshoneynet/*.tgz /var/log/cshoneynet
+		rm /var/log/cshoneynet/*.tgz
+		bye
+		EOF
+		slaves="$slaves $hostname"
+		if [ $count == "0" ]; then
+			# init the cron file
+			cat > /usr/local/sbin/cernscadahoneynet-master <<-EOF
+			#!/usr/bin/env sh
+			
+			logsdir="/var/log/cshoneynet"
+			report="report.txt"
+			admins="$admins"
+			secureiplist="$secureiplist"
+
+			sftp -b /etc/cshoneynet/cmdfile.sftp -oIdentityFile=/root/.ssh/cshoneynet_id_dsa $username@$hostname
+			EOF
+			count="1"
+		else
+			# append to the cron file
+			cat >> /usr/local/sbin/cernscadahoneynet-master <<-EOF
+			sftp -b /etc/cshoneynet/cmdfile.sftp -oIdentityFile=/root/.ssh/cshoneynet_id_dsa $username@$hostname
+			EOF
+		fi
+		echo -n "More slave machines ? (y/n) : "
+		read answer
+		if [ ! "$answer" == "y" ]; then
+			onemore=0
+		fi
+	done
+	cat >> /usr/local/sbin/cernscadahoneynet-master <<-EOF
+	slaves="$slaves"
+
+	untar_logs() {
+		if [ ! -d "backup" ]
+		then
+			mkdir backup
+		fi
+		ls *.tgz | grep \$1 | awk '{system("tar xzf " \$1); system("mv " \$1 " backup")}'
+	}
+	
+	init_report() {
+		timestamp=\`date +"%A, %B %e %Y"\`
+		cat > \$1 <<-EOF2
+		Subject: CSH Logs of \$timestamp
+		
+		::::::::::::::::::::::::::::::::::::::::::
+		:::::   CERN SCADA Honeynet Report   :::::
+		::::::::::::::::::::::::::::::::::::::::::
+	
+		Date : \$timestamp
+		
+		
+	EOF2
+	}
+
+	parse_honeyd_log() {
+		cat \$1 > tmp
+		for secureip in \$secureiplist
+		do
+			cat tmp | sed -e "/\$secureip/d" > tmp2
+			mv tmp2 tmp	
+		done
+		result=\`cat tmp | awk '/: / { print \$0 }' | awk '/ 21: | 23: | 80: | 102: | 161: | 502: / { print ">  ", \$0; next } { print "  ", \$0 }'\`
+		if [ -n "\$result" ]
+		then
+			echo -e " - \$2\\n\\n\$result\\n" >> \$3
+		fi
+		rm tmp
+	}
+	
+	update_report() {
+		ipaddress=\`gethostip -d \$1\`
+		echo -e " \$1 ( \$ipaddress )\\n" >> \$2
+		ping \$ipaddress -c 1
+		if [ ! \$? == 0 ]; then
+			echo -e " HOST DOWN\\n" >> \$2
+		fi
+		for day in \`ls | grep \$1\`
+		do
+			cd \$day
+			parse_honeyd_log honeyd.log.log \$day ../\$2
+			cd ..
+		done
+		echo "" >> \$2
+	}
+	
+	delete_logs() {
+		rm -rf \$1*
+	}
+	
+	send_mail() {
+		for admin in \$admins
+		do
+			sendmail \$admin < \$report
+		done
+		rm \$report
+	}
+	
+	cd \$logsdir
+	
+	init_report \$report
+	
+	for slave in \$slaves
+	do
+		untar_logs \$slave
+		update_report \$slave \$report
+		delete_logs \$slave
+	done
+	send_mail \$report \$admin
+	
+	EOF
+	chmod a+x /usr/local/sbin/cernscadahoneynet-master
+}
+
+check_root
+process_args_and_install $@
